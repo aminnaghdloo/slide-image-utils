@@ -46,7 +46,7 @@ n_frames = 2304
 # data_path is where any output will be saved.
 # data_path = "/home/amin/Dropbox/Education/PhD/CSI/Projects/P13_immune/data"
 data_path = "/media/amin/B47805FB7805BCDC/data_path"
-onco_path = "/media/T/OncoScope"
+onco_paths = [f"/media/{item}/OncoScope" for item in ['T', 'V', 'W', 'Z', 'R']]
 dz_path = "/media/Y/DZ"
 
 # Classes
@@ -55,30 +55,32 @@ class Frame:
     def __init__(self, slide_id, frame_id, data_path=data_path):
         self.slide_id = slide_id
         self.frame_id = frame_id
-        self.data_path = data_path
         self.image = getFrameImage(slide_id, frame_id)
         self.nucleusmask = self.readNucleusMask()
         self.cellmask = self.readCellMask()
         self.count = np.unique(self.nucleusmask).shape[0] - 1
     
     def readNucleusMask(self):
-        nucleusmask_path = f'''{self.data_path}/{self.slide_id}/nucleusmask/
-                            {self.frame_id}.tif'''
+        nucleusmask_dir = f"{data_path}/{self.slide_id}/nucleusmask"
+        os.makedirs(nucleusmask_dir, exist_ok=True)
+        nucleusmask_path = f"{nucleusmask_dir}/{self.frame_id}.tif"
         if os.path.exists(nucleusmask_path):
             return(readMask(nucleusmask_path))
         else:
-            print(f"Generating nucleus mask -> {self.slide_id}:{self.frame_id}")
+            print(f"Generating nucleus mask -> {self.slide_id} :"
+                f" {self.frame_id}")
             return(segmentNucleus(self.image[:, :, 0], nucleusmask_path))
 
     def readCellMask(self):
-        cellmask_path = f'''{self.data_path}/{self.slide_id}/cellmask/
-                        {self.frame_id}.tif'''
+        cellmask_dir = f"{data_path}/{self.slide_id}/cellmask"
+        os.makedirs(cellmask_dir, exist_ok=True)
+        cellmask_path = f"{cellmask_dir}/{self.frame_id}.tif"
         if os.path.exists(cellmask_path):
             return(readMask(cellmask_path))
         else:
-            print(f"Generating cell mask -> {self.slide_id}:{self.frame_id}")
-            return(segmentCell(self.image[:, :, [0, 2, 3]], self.nucleusmask,
-                        cellmask_path))
+            print(f"Generating cell mask -> {self.slide_id} :"
+                f" {self.frame_id}")
+            return(segmentCell(self.image, self.nucleusmask, cellmask_path))
 
     def extractCellCoords(self):
         "Extract cell coordinates of the frame based on the mask."
@@ -194,10 +196,14 @@ class Frame40x():
 # Functions
 def getSlidePath(slide_id):
     "Extracts path to raw 10x frame images of a slide."
-    slide_path = glob.glob(f"{onco_path}/"
+    for onco_path in onco_paths:
+        slide_path = glob.glob(f"{onco_path}/"
                            f"tubeID_{slide_id[0:5]}/*/slideID_{slide_id}/"
                            f"bzScanner/proc/")
-    return(slide_path[0])
+        if len(slide_path) != 0:
+            return(slide_path[0])
+    print("Slide path was not found!")
+    return(None)
 
 
 def getFrameImage(slide_id, frame_id):
@@ -206,6 +212,8 @@ def getFrameImage(slide_id, frame_id):
     image_names = [f"{slide_path}{img_pref}"
                    f"{str(frame_id + n_frames * id).zfill(6)}{img_suf}"
                    for id in channels.values()]
+    for name in image_names:
+        assert os.path.exists(name)
     out_image = np.stack(
         [cv2.imread(image_names[i],-1) for i in range(len(channels))],
         axis=2
@@ -214,17 +222,20 @@ def getFrameImage(slide_id, frame_id):
 
 
 def readMask(mask_path):
+    "Read masks using OpenCV library with 16-bit integer values."
     out = cv2.imread(mask_path, -1)
     return(out)
 
 
 def cvImageShow(img, title='title'):
+    "Display image using OpenCV library."
     cv2.imshow('sample image',img)
     cv2.waitKey(3000) # waits until a key is pressed
     cv2.destroyAllWindows() # destroys the window showing image
 
 
 def pltImageShow(img, title='title', size=(8,6), dpi=150):
+    "Display image using matplotlib.pyplot package."
     if(img.dtype == 'uint16'):
         img = img.astype('float')
         img = img / 65535
@@ -236,6 +247,7 @@ def pltImageShow(img, title='title', size=(8,6), dpi=150):
 
 
 def fillHull(input_mask):
+    "Fill the holes in masks."
     assert input_mask.dtype == np.uint8
     h, w = input_mask.shape
     canvas = np.zeros((h + 2, w + 2), np.uint8)
@@ -281,7 +293,7 @@ def segmentNucleus(input_image, file_name=None):
     return(segmented_nuclei)
 
 
-def segmentCell(image, seed, filename=None):
+def segmentCell(image, seed, file_name=None):
     '''Segments cells based on markers using all given grayscale channels in 
     the 'input_image' and returns a grayscale image with unique labels for 
     event masks.
@@ -306,10 +318,10 @@ def segmentCell(image, seed, filename=None):
         out_image += image[:,:,i] ** 2
     out_image = np.sqrt(out_image / image.shape[2])
         
-    cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX)
-    image = image.astype(np.uint8)
+    cv2.normalize(out_image, out_image, 0, 255, cv2.NORM_MINMAX)
+    out_image = out_image.astype('uint8')
     mask = cv2.adaptiveThreshold(
-        image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
+        out_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
         thresh_size, thresh_offset
     )
     
@@ -320,7 +332,7 @@ def segmentCell(image, seed, filename=None):
     segmented_cells = segmented_cells.astype("uint16")
     
     if file_name is not None:
-        cv2.imwrite(filename, segmented_cells)
+        cv2.imwrite(file_name, segmented_cells)
         
     return(segmented_cells)
 
@@ -609,9 +621,9 @@ def get40xSlidePath(slide_id):
 
 
 def get40xFrameImage(slide_id, frame_id):
-    '''Extract paths to raw 40x frame images of a slide.
+    '''Extract raw 40x a frame image using slide_id and frame_id.
     
-    A 40x image frame_id has the following format:
+    A 40x image 'frame_id' has the following format:
     <frame_id>-<cell_id>-<x>-<y>
     where all for information correspond to the interesting cell 
     selected from 10x image processing.
