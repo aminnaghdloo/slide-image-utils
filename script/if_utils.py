@@ -12,6 +12,13 @@
 # WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
+# ====================================================================
+
+### Note:
+
+# The following package is capable of processing nucleated cells.
+# It will later be developed to include non-nucleated events as well.
+
 
 # Loading packages
 import glob
@@ -22,6 +29,7 @@ import pickle
 import cv2
 import numpy as np
 import pandas as pd
+import tifffile as tff
 import matplotlib.pyplot as plt
 from scipy import ndimage as ndi
 from skimage import (
@@ -32,23 +40,18 @@ from skimage import (
 # General
 img_pref = "Tile"
 img_suf = ".tif"
-channels = {'dapi' : 0, 'tritc' : 1, 'cy5' : 2, 'fitc' : 4}
+channels = {'DAPI' : 0, 'TRITC' : 1, 'CY5' : 2, 'FITC' : 4}
 n_frames = 2304
 
-# data_path is where any output will be saved
-data_path = "/home/amin/Dropbox/Education/PhD/CSI/Projects/P13_immune/data"
-onco_path = "/media/CSI-Data(T)/OncoScope"
-
-# Masking
-blur_size = (5, 5)
-thresh_size = 25
-thresh_offset = -2 # threshold offset for adaptive thresholding
-opening_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-
+# data_path is where any output will be saved.
+# data_path = "/home/amin/Dropbox/Education/PhD/CSI/Projects/P13_immune/data"
+data_path = "/media/amin/B47805FB7805BCDC/data_path"
+onco_path = "/media/T/OncoScope"
+dz_path = "/media/Y/DZ"
 
 # Classes
 class Frame:
-    """A class to include all frame data"""
+    """A class to include 10x frame image data"""
     def __init__(self, slide_id, frame_id, data_path=data_path):
         self.slide_id = slide_id
         self.frame_id = frame_id
@@ -155,8 +158,42 @@ class Frame:
         return(out)
 
 
+class Frame40x():
+    "A class to include all 40x frame image data."
+
+    def __init__(self, slide_id, frame_id):
+        self.slide_id = slide_id
+        self.frame_id = frame_id
+        self.image = get40xFrameImage(slide_id, frame_id)
+        self.nucleusmask = self.readNucleusMask()
+        self.cellmask = self.readCellMask()
+        self.count = np.unique(self.nucleusmask).shape[0] - 1
+    
+    def readNucleusMask(self):
+        nucleusmask_dir = f"{data_path}/{self.slide_id}/40X/nucleusmask"
+        os.makedirs(nucleusmask_dir, exist_ok=True)
+        nucleusmask_path = f"{nucleusmask_dir}/{self.frame_id}.tif"
+        if os.path.exists(nucleusmask_path):
+            return(readMask(nucleusmask_path))
+        else:
+            print(f'''Generating nucleus mask -> 
+            {self.slide_id} : {self.frame_id}''')
+            return(segment40xNucleus(self.image[:, :, 0], nucleusmask_path))
+
+    def readCellMask(self):
+        cellmask_dir = f"{data_path}/{self.slide_id}/40X/cellmask"
+        os.makedirs(cellmask_dir, exist_ok=True)
+        cellmask_path = f"{cellmask_dir}/{self.frame_id}.tif"
+        if os.path.exists(cellmask_path):
+            return(readMask(cellmask_path))
+        else:
+            print(f"Generating cell mask -> {self.slide_id} : {self.frame_id}")
+            return(segment40xCell(self.image, self.nucleusmask, cellmask_path))
+        
+
 # Functions
 def getSlidePath(slide_id):
+    "Extracts path to raw 10x frame images of a slide."
     slide_path = glob.glob(f"{onco_path}/"
                            f"tubeID_{slide_id[0:5]}/*/slideID_{slide_id}/"
                            f"bzScanner/proc/")
@@ -164,12 +201,14 @@ def getSlidePath(slide_id):
 
 
 def getFrameImage(slide_id, frame_id):
+    "Extracts raw 10x frame image of a slide."
     slide_path = getSlidePath(slide_id)
-    img_names = [f"{slide_path}{img_pref}"
-                 f"{str(frame_id + n_frames * id).zfill(6)}{img_suf}"
-                 for id in channels.values()]
+    image_names = [f"{slide_path}{img_pref}"
+                   f"{str(frame_id + n_frames * id).zfill(6)}{img_suf}"
+                   for id in channels.values()]
     out_image = np.stack(
-        [cv2.imread(img_names[i],-1) for i in range(len(channels))], axis=2
+        [cv2.imread(image_names[i],-1) for i in range(len(channels))],
+        axis=2
         )
     return(out_image)
 
@@ -209,7 +248,18 @@ def fillHull(input_mask):
     return(canvas * input_mask.max() + input_mask)
 
 
-def segmentNucleus(input_image, filename):
+def segmentNucleus(input_image, file_name=None):
+    '''Segments cell nuclei from DAPI channel grayscale image and returns 
+    a grayscale image with unique labels for event masks.
+    The mask can also be saved provided the 'file_name' argument.'''
+    
+    # Segmentation parameters
+    blur_size = (5, 5)
+    thresh_size = 25
+    thresh_offset = -2 # threshold offset for adaptive thresholding
+    opening_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+
+    # Image processing
     image = cv2.blur(input_image, blur_size) # Mean filter to reduce noise
     cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX)
     image = image.astype("uint8")
@@ -224,30 +274,131 @@ def segmentNucleus(input_image, filename):
     markers = measure.label(local_max_mask)
     segmented_nuclei = segmentation.watershed(-image_dist, markers, mask=mask)
     segmented_nuclei = segmented_nuclei.astype("uint16")
-    cv2.imwrite(filename, segmented_nuclei)
+
+    if file_name is not None:
+        cv2.imwrite(file_name, segmented_nuclei)
+
     return(segmented_nuclei)
 
 
-def segmentWBC(input_image, seed, filename):
-    image = input_image
+def segmentCell(image, seed, filename=None):
+    '''Segments cells based on markers using all given grayscale channels in 
+    the 'input_image' and returns a grayscale image with unique labels for 
+    event masks.
+    The mask can also be saved provided the file_name argument.'''
+    
+    # Segmentation parameters
+    blur_size = (5, 5)
+    thresh_size = 25
+    thresh_offset = -2 # threshold offset for adaptive thresholding
+    opening_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+    
+    image = image.astype("float64")
+    if len(image.shape) == 2:
+        image = image[:, :, np.newaxis]
     for i in range(image.shape[2]):
         image[:, :, i] = cv2.blur(image[:, :, i], blur_size)
-        cv2.normalize(image[:, :, i], image[:, :, i], 0, 65535,
-                        cv2.NORM_MINMAX)
-    image = image.astype("float64")
-    image = np.sqrt((image[:,:,0] ** 2 + image[:,:,1] ** 2 + 
-                     image[:,:,2] ** 2) / 3)
+        image[:, :, i] = cv2.normalize(image[:, :, i], 0, 65535,
+                                       cv2.NORM_MINMAX)
+    
+    out_image = np.zeros(image.shape[0:2], dtype='float64')
+    for i in range(image.shape[2]):
+        out_image += image[:,:,i] ** 2
+    out_image = np.sqrt(out_image / image.shape[2])
+        
     cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX)
     image = image.astype(np.uint8)
-    mask = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                 cv2.THRESH_BINARY, thresh_size,
-                                 thresh_offset)
+    mask = cv2.adaptiveThreshold(
+        image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
+        thresh_size, thresh_offset
+    )
+    
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, opening_kernel)
     mask = fillHull(mask)
     image_dist = cv2.distanceTransform(mask, cv2.DIST_L2, 3, cv2.CV_32F)
-    segmented_cells = segmenetation.watershed(-image_dist, seed, mask=mask)
+    segmented_cells = segmentation.watershed(-image_dist, seed, mask=mask)
     segmented_cells = segmented_cells.astype("uint16")
-    cv2.imwrite(filename, segmented_cells)
+    
+    if file_name is not None:
+        cv2.imwrite(filename, segmented_cells)
+        
+    return(segmented_cells)
+
+
+def segment40xNucleus(input_image, file_name=None):
+    '''Segments cell nuclei from DAPI channel grayscale image and returns 
+    a grayscale image with labeled masks.
+    The mask can also be saved provided the file_name argument.'''
+    
+    # Segmentation Parameters
+    blur_size = (15, 15)
+    thresh_size = 55
+    thresh_offset = -1 # threshold offset for adaptive thresholding
+    opening_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+
+    # Image processing
+    image = cv2.blur(input_image, blur_size) # Mean filter to reduce noise
+    cv2.normalize(image, image, 0, 255, cv2.NORM_MINMAX)
+    image = image.astype("uint8")
+    mask = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                 cv2.THRESH_BINARY, thresh_size, thresh_offset)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, opening_kernel)
+    mask = fillHull(mask)
+    image_dist = cv2.distanceTransform(mask, cv2.DIST_L2, 3, cv2.CV_32F)
+    local_max_coords = feature.peak_local_max(image_dist, min_distance=15)
+    local_max_mask = np.zeros(image_dist.shape, dtype=bool)
+    local_max_mask[tuple(local_max_coords.T)] = True
+    markers = measure.label(local_max_mask)
+    segmented_nuclei = segmentation.watershed(-image_dist, markers, mask=mask)
+    segmented_nuclei = segmented_nuclei.astype("uint16")
+
+    if file_name is not None:
+        cv2.imwrite(file_name, segmented_nuclei)
+
+    return(segmented_nuclei)
+
+
+def segment40xCell(image, seed, file_name=None):
+    '''Segments cells based on markers using all given grayscale channels in 
+    the 'input_image' and returns a grayscale image with unique labels for 
+    event masks.
+    The mask can also be saved provided the file_name argument.'''
+    
+    # Segmentation parameters
+    blur_size = (15, 15)
+    thresh_size = 99
+    thresh_offset = -1 # threshold offset for adaptive thresholding
+    opening_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(5,5))
+    
+    image = image.astype("float64")
+    if len(image.shape) == 2:
+        image = image[:, :, np.newaxis]
+    for i in range(image.shape[2]):
+        image[:, :, i] = cv2.blur(image[:, :, i], blur_size)
+        image[:, :, i] = cv2.normalize(image[:, :, i], 0, 65535,
+                                       cv2.NORM_MINMAX)
+    
+    out_image = np.zeros(image.shape[0:2], dtype='float64')
+    for i in range(image.shape[2]):
+        out_image += image[:,:,i] ** 2
+    out_image = np.sqrt(out_image / image.shape[2])
+
+    cv2.normalize(out_image, out_image, 0, 255, cv2.NORM_MINMAX)
+    out_image = out_image.astype(np.uint8)
+    mask = cv2.adaptiveThreshold(
+        out_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
+        thresh_size, thresh_offset
+    )
+    
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, opening_kernel)
+    mask = fillHull(mask)
+    image_dist = cv2.distanceTransform(mask, cv2.DIST_L2, 3, cv2.CV_32F)
+    segmented_cells = segmentation.watershed(-image_dist, seed, mask=mask)
+    segmented_cells = segmented_cells.astype("uint16")
+    
+    if file_name is not None:
+        cv2.imwrite(file_name, segmented_cells)
+    
     return(segmented_cells)
 
 
@@ -263,8 +414,10 @@ def getCellCoords(input_file, output_file=None):
         print(f"{frame.count} cell coordinates extracted from slide_id:"
               f"{slide_id}, frame_id:{frame_id}")
     output_df = pd.concat(output_df)
+    
     if output_file is not None:
         output_df.to_csv(output_file, sep="\t", index=False)
+        
     return(output_df)
 
 
@@ -445,3 +598,38 @@ def loadCompressedData(path):
 
 
 #def saveMontages()
+
+
+
+## Functions for 40x image processing
+def get40xSlidePath(slide_id):
+    "Extracts path to raw 40x frame images of a slide."
+    slide_path = glob.glob(f"{dz_path}/{slide_id}/**/40X")
+    return(slide_path[0])
+
+
+def get40xFrameImage(slide_id, frame_id):
+    '''Extract paths to raw 40x frame images of a slide.
+    
+    A 40x image frame_id has the following format:
+    <frame_id>-<cell_id>-<x>-<y>
+    where all for information correspond to the interesting cell 
+    selected from 10x image processing.
+    
+    Example from slide 0A4801:
+    1013-590-966-200 
+    
+    This function uses 'tifffile' module to read 12-bit images and 
+    performs 4 left bit-shifts (multiplication by 16) to normalize 
+    the image.'''
+    
+    slide_path = get40xSlidePath(slide_id)
+    image_names = [f"{slide_path}/{frame_id}-{ch}.tif"
+                   for ch in channels.keys()]
+    out_image = np.stack(
+        [tff.imread(image_names[i]) for i in range(len(channels))],
+        axis=2
+        )
+    return(out_image * 16)
+
+
