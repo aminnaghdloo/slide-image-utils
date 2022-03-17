@@ -1,4 +1,3 @@
-
 # Copyright (C) December 2021 
 #
 # Author: Amin Naghdloo
@@ -17,7 +16,6 @@
 ### Note:
 
 # The following package is capable of processing nucleated cells.
-# It will later be developed to include non-nucleated events as well.
 
 
 # Loading packages
@@ -31,7 +29,6 @@ import numpy as np
 import pandas as pd
 import tifffile as tff
 import matplotlib.pyplot as plt
-from scipy import ndimage as ndi
 from skimage import (
     color, feature, filters, measure, morphology, segmentation, util, exposure
 )
@@ -39,22 +36,25 @@ from skimage import (
 ## Parameters
 # General
 img_pref = "Tile"
-img_suf = ".tif"
+img_suf1 = ".tif"
+img_suf2 = ".jpg"
+img_meta = ".tags"
 channels = {'DAPI' : 0, 'TRITC' : 1, 'CY5' : 2, 'FITC' : 4}
+
 n_frames = 2304
 
 # data_path is where any output will be saved.
 # data_path = "/home/amin/Dropbox/Education/PhD/CSI/Projects/P13_immune/data"
 data_path = "/media/amin/B47805FB7805BCDC/data_path"
-onco_paths = [f"/media/{item}/OncoScope" for item in ['T', 'V', 'W', 'Z', 'R']]
-dz_path = "/media/Y/DZ"
+onco_paths = [f"/mnt/{item}/OncoScope" for item in ['T', 'V', 'W', 'Z', 'R']]
+dz_path = "/mnt/Y/DZ"
 
 # Classes
 class Frame:
     """A class to include 10x frame image data"""
     def __init__(self, slide_id, frame_id, data_path=data_path):
         self.slide_id = slide_id
-        self.frame_id = frame_id
+        self.frame_id = int(frame_id)
         self.image = getFrameImage(slide_id, frame_id)
         self.nucleusmask = self.readNucleusMask()
         self.cellmask = self.readCellMask()
@@ -80,7 +80,8 @@ class Frame:
         else:
             print(f"Generating cell mask -> {self.slide_id} :"
                 f" {self.frame_id}")
-            return(segmentCell(self.image, self.nucleusmask, cellmask_path))
+            return(segmentCell(self.image, self.nucleusmask,
+                               cellmask_path))
 
     def extractCellCoords(self):
         "Extract cell coordinates of the frame based on the mask."
@@ -90,6 +91,7 @@ class Frame:
                     )
         props = pd.DataFrame(props)
         props.set_axis(['cell_id', 'x', 'y'], axis=1, inplace=True)
+        props = props.astype({'cell_id': int})
         props.insert(0, 'slide_id', self.slide_id)
         props.insert(1, 'frame_id', self.frame_id)
         return(props)
@@ -192,6 +194,18 @@ class Frame40x():
             print(f"Generating cell mask -> {self.slide_id} : {self.frame_id}")
             return(segment40xCell(self.image, self.nucleusmask, cellmask_path))
         
+    def extractCellCoords(self):
+        "Extract cell coordinates of the frame based on the mask."
+        props = measure.regionprops_table(
+                    self.cellmask, self.image, separator='_',
+                    properties=['label', 'centroid']
+                    )
+        props = pd.DataFrame(props)
+        props.set_axis(['cell_id', 'x', 'y'], axis=1, inplace=True)
+        props.insert(0, 'slide_id', self.slide_id)
+        props.insert(1, 'frame_id', self.frame_id)
+        return(props)
+        
 
 # Functions
 def getSlidePath(slide_id):
@@ -210,16 +224,61 @@ def getFrameImage(slide_id, frame_id):
     "Extracts raw 10x frame image of a slide."
     slide_path = getSlidePath(slide_id)
     image_names = [f"{slide_path}{img_pref}"
-                   f"{str(frame_id + n_frames * id).zfill(6)}{img_suf}"
+                   f"{str(frame_id + n_frames * id).zfill(6)}{img_suf1}"
                    for id in channels.values()]
-    for name in image_names:
-        assert os.path.exists(name)
-    out_image = np.stack(
-        [cv2.imread(image_names[i],-1) for i in range(len(channels))],
-        axis=2
-        )
+    
+    # TIFF images
+    if os.path.exists(image_names[0]):
+        out_image = np.stack(
+            [cv2.imread(image_names[i],-1) for i in range(len(channels))],
+            axis=2
+            )
+    
+    # JPG images
+    elif os.path.exists(image_names[0].replace(img_suf1, img_suf2)):
+        image_names = [image_names[i].replace(img_suf1, img_suf2)
+                       for i in range(len(image_names))]
+        meta_names = [image_names[i].replace(img_suf2, img_meta)
+                       for i in range(len(image_names))]
+        
+        meta_vals = readPreservedMinMax(meta_names)
+        
+        out_image = np.stack(
+            [cv2.imread(image_names[i],-1) for i in range(len(channels))],
+            axis=2
+            )
+        out_image = out_image.astype('float64')
+        out_image = np.stack(
+            [out_image[:, :, i] * (meta_vals['maxval'][i] - meta_vals['minval'][i]) + meta_vals['minval'][i]
+            for i in range(len(channels))],
+            axis=2)
+        out_image = out_image.astype('uint16')
+        
+    else:
+        print("Image path does not exist!")
+        sys.exit()
+
     return(out_image)
 
+
+def readPreservedMinMax(meta_names):
+    "This function reads preserved min and max pixel values for JPEG images."
+    minval = []
+    maxval = []
+    for i in range(len(meta_names)):
+        with open(meta_names[i]) as file:
+            lines = file.read().splitlines()
+            for line in lines:
+                tag, val = line.split('=')
+                
+                if tag == 'PreservedMinValue':
+                    minval.append(int(float(val) * 256))
+                    
+                elif tag == 'PreservedMaxValue':
+                    maxval.append(int(float(val) * 256))
+    
+    vals = {'minval':minval, 'maxval':maxval}
+    return(vals)
 
 def readMask(mask_path):
     "Read masks using OpenCV library with 16-bit integer values."
@@ -234,7 +293,7 @@ def cvImageShow(img, title='title'):
     cv2.destroyAllWindows() # destroys the window showing image
 
 
-def pltImageShow(img, title='title', size=(8,6), dpi=150):
+def pltImageShow(img, title='title', size=(8,6), dpi=150, out=None):
     "Display image using matplotlib.pyplot package."
     if(img.dtype == 'uint16'):
         img = img.astype('float')
@@ -243,6 +302,8 @@ def pltImageShow(img, title='title', size=(8,6), dpi=150):
     plt.imshow(img, cmap='gray')
     plt.axis('off')
     plt.title(title)
+    if out is not None:
+        plt.savefig(out)
     plt.show()
 
 
@@ -310,7 +371,7 @@ def segmentCell(image, seed, file_name=None):
         image = image[:, :, np.newaxis]
     for i in range(image.shape[2]):
         image[:, :, i] = cv2.blur(image[:, :, i], blur_size)
-        image[:, :, i] = cv2.normalize(image[:, :, i], 0, 65535,
+        image[:, :, i] = cv2.normalize(image[:, :, i], 0, 255,
                                        cv2.NORM_MINMAX)
     
     out_image = np.zeros(image.shape[0:2], dtype='float64')
@@ -433,18 +494,47 @@ def getCellCoords(input_file, output_file=None):
     return(output_df)
 
 
-def getCellfeatures(input_file, output_file=None):
-    input_df = pd.read_table(input_file)
+def getCellFeatures(input_file, output_file=None):
+    if isinstance(input_file, pd.DataFrame):
+        input_df = input_file
+    elif isinstance(input_file, str):
+        input_df = pd.read_table(input_file)
+        
     input_df.frame_id = input_df.frame_id.astype('int')
     groups = input_df.groupby(['slide_id', 'frame_id'])
     output_df = []
     for slide_id, frame_id in groups.indices:
+        print(f"Processing slide_id:{slide_id} frame_id:{frame_id}")
         frame = Frame(slide_id, frame_id)
         temp1 = frame.extractCellCoords()
         temp2 = frame.extractCellProps()
         temp3 = frame.extractGranularity(channel=0, use_nucleus_mask=True)
         temp4 = frame.extractGranularity(channel=2, use_nucleus_mask=False)
         temp = pd.concat([temp1, temp2, temp3, temp4], axis=1)
+        output_df.append(temp)
+        print(f"{frame.count} cell features extracted from slide_id:"
+              f"{slide_id}, frame_id:{frame_id}")
+    output_df = pd.concat(output_df)
+    if output_file is not None:
+        output_df.to_csv(output_file, sep="\t", index=False)
+    return(output_df)
+
+
+def getCellBasicFeatures(input_file, output_file=None):
+    if isinstance(input_file, pd.DataFrame):
+        input_df = input_file
+    elif isinstance(input_file, str):
+        input_df = pd.read_table(input_file)
+        
+    input_df.frame_id = input_df.frame_id.astype('int')
+    groups = input_df.groupby(['slide_id', 'frame_id'])
+    output_df = []
+    for slide_id, frame_id in groups.indices:
+        print(f"Processing slide_id:{slide_id} frame_id:{frame_id}")
+        frame = Frame(slide_id, frame_id)
+        temp1 = frame.extractCellCoords()
+        temp2 = frame.extractCellProps()
+        temp = pd.concat([temp1, temp2], axis=1)
         output_df.append(temp)
         print(f"{frame.count} cell features extracted from slide_id:"
               f"{slide_id}, frame_id:{frame_id}")
@@ -473,6 +563,36 @@ def getGranularity(input_file, output_file=None, n=10, channel=0,
     return(output_df)
 
 
+def getCellIdFromCoords(input_file, output_file=None, colname='new_cell_id',
+                        verbose=True):
+    '''
+    file_path: a tab-delimited list of cells including 4 columns:
+    <slide_id>  <frame_id>  <x> <y>
+    '''
+    if isinstance(input_file, pd.DataFrame):
+        df = input_file
+    elif isinstance(input_file, str):
+        df = pd.read_table(input_file)
+    df.frame_id = df.frame_id.astype(int)
+    groups = df.groupby(['slide_id', 'frame_id'])
+    cell_ids = []
+    for slide_id, frame_id in groups.indices:
+        frame = Frame(slide_id=slide_id, frame_id=frame_id)
+        index = groups.indices[(slide_id, frame_id)]
+        indices = df.loc[index.tolist(), ['x','y']]
+        cell_id = frame.cellmask[indices.x, indices.y]
+        if verbose:
+            print(f"{slide_id}-{frame_id} --> cell_ids: {cell_id}")
+        cell_ids.extend(cell_id)
+    
+    df.insert(2, colname, pd.DataFrame(cell_ids))
+    
+    if output_file is not None:
+        df.to_csv(output_file, sep='\t', index=False)
+        
+    return(df)
+
+
 def getCellImages(input_file, width, mask_flag=True):
     '''
     file_path: a tab-delimited list of cells including 4 columns:
@@ -480,7 +600,11 @@ def getCellImages(input_file, width, mask_flag=True):
     width: cropping size of each individual cell image
     mask: flag to mask the individual cell of interest
     '''
-    cell_info = pd.read_table(input_file)
+    if isinstance(input_file, pd.DataFrame):
+        cell_info = input_file
+    elif isinstance(input_file, str):
+        cell_info = pd.read_table(input_file)
+    
     cell_info.frame_id = cell_info.frame_id.astype(int)
     images = np.zeros((cell_info.shape[0], width, width, len(channels)),
                     dtype='uint16')
@@ -524,17 +648,19 @@ def cropCells(frame, xy_data, width, mask_flag):
     return(out)
 
 
-def fourchannels2rgb(image):
-    "Convert 4 channel images to RGB float to display."
+def channels2rgb(image):
+    "Convert channels images to RGB float to display."
     assert(image.dtype == 'uint16')
     image = image.astype('float')
     if(len(image.shape) == 4):
         image[:,:,:,0:3] = image[:,:,:,[1,2,0]]
-        image = image[:,:,:,0:3] + np.expand_dims(image[:,:,:,3], 3)
+        if(image.shape[3] == 4):
+            image = image[:,:,:,0:3] + np.expand_dims(image[:,:,:,3], 3)
         
     elif(len(image.shape) == 3):
         image[:,:,0:3] = image[:,:,[1,2,0]]
-        image = image[:,:,0:3] + np.expand_dims(image[:,:,3], 2)
+        if(image.shape[2] == 4):
+            image = image[:,:,0:3] + np.expand_dims(image[:,:,3], 2)
         
     image[image > 65535] = 65535
     image = image.astype('uint16')
@@ -645,3 +771,12 @@ def get40xFrameImage(slide_id, frame_id):
     return(out_image * 16)
 
 
+def getCoords(mask):
+        "Extract coordinates of the mask labels."
+        props = measure.regionprops_table(
+                    mask, mask, separator='_',
+                    properties=['label', 'centroid']
+                    )
+        props = pd.DataFrame(props)
+        props.set_axis(['cell_id', 'x', 'y'], axis=1, inplace=True)
+        return(props)
