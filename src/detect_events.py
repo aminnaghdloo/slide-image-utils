@@ -15,15 +15,10 @@ import utils
 from classes import Frame
 
 
-def generate_tile_paths(path, frame_id, starts, name_format):
-    paths = [f"{path}/{name_format}" % (frame_id + j - 1) for j in starts]
-    return(paths)
-
-
 def segment_frame(frame, params):
     "segment frame to identify all events"
     
-    logger = utils.get_logger(__name__, params['verbose'])
+    logger = utils.get_logger("segment_frame", params['verbose'])
     logger.info(f"Processing frame {frame.frame_id}...")
     
     # Preparing input
@@ -134,7 +129,7 @@ def main(args):
     frames = []
     for i in range(n_frames):
         frame_id = i + offset + 1
-        paths = generate_tile_paths(
+        paths = utils.generate_tile_paths(
             path=in_path, frame_id=frame_id, starts=starts,
             name_format=name_format)
         frame = Frame(frame_id=frame_id, channels=channels)
@@ -151,8 +146,8 @@ def main(args):
     logger.info("Finished processing the frames.")
     
     logger.info("Saving features...")
-    feature_vec = pd.concat(features)
-    feature_vec.to_csv(out_path, sep='\t')
+    feature_vec = pd.concat(features, ignore_index=True)
+    feature_vec.to_csv(out_path, sep='\t', index=False)
     logger.info("Finished saving features.")
 
 if __name__ == '__main__':
