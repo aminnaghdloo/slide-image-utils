@@ -292,7 +292,7 @@ def cvImageShow(img, title='title'):
     cv2.waitKey(3000) # waits until a key is pressed
     cv2.destroyAllWindows() # destroys the window showing image
 
-
+# Copied!
 def pltImageShow(img, title='title', size=(8,6), dpi=150, out=None):
     "Display image using matplotlib.pyplot package."
     if(img.dtype == 'uint16'):
@@ -306,7 +306,7 @@ def pltImageShow(img, title='title', size=(8,6), dpi=150, out=None):
         plt.savefig(out)
     plt.show()
 
-
+# Copied!
 def fillHull(input_mask):
     "Fill the holes in masks."
     assert input_mask.dtype == np.uint8
