@@ -29,11 +29,27 @@ def get_logger(module_name, verbosity_level):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(level)
     formatter = logging.Formatter(
-        "[%(levelname)s] %(name)s : %(message)s")
+        "[%(levelname)s] @ %(asctime)s : %(message)s")
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
     return(logger)
+
+
+def generate_tile_paths(path, frame_id, starts, name_format):
+    paths = [f"{path}/{name_format}" % (frame_id + j - 1) for j in starts]
+    return(paths)
+
+
+def is_edge(frame_id):
+        if (
+            frame_id <= 48 or
+            frame_id > 2256 or
+            frame_id % 24 in [0, 1, 2, 23]
+        ):
+            return(True)
+        else:
+            return(False)
 
 
 def fill_holes(input_mask):
