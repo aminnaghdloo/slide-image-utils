@@ -142,3 +142,23 @@ def filter_events(features, filters, verbosity):
     logger.info(f"Filtered {n} events down to {len(features)} events")
 
     return(features)
+
+
+def readPreservedMinMax(meta_names):
+    "This function reads preserved min and max pixel values for JPEG images."
+    minval = []
+    maxval = []
+    for i in range(len(meta_names)):
+        with open(meta_names[i]) as file:
+            lines = file.read().splitlines()
+            for line in lines:
+                tag, val = line.split('=')
+                
+                if tag == 'PreservedMinValue':
+                    minval.append(int(float(val) * 256))
+                    
+                elif tag == 'PreservedMaxValue':
+                    maxval.append(int(float(val) * 256))
+    
+    vals = {'minval':minval, 'maxval':maxval}
+    return(vals)

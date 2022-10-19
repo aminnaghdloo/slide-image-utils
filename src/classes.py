@@ -1,4 +1,5 @@
 import os
+import sys
 import cv2
 import numpy as np
 import utils
@@ -17,8 +18,29 @@ class Frame:
         self.mask = None
 
     def readImage(self, paths):
-        images = [cv2.imread(path, -1) for path in paths]
-        self.image = cv2.merge(images)
+        if not os.path.exists(paths[0]):
+            print(paths[0])
+            logger.error("image is not found!")
+            sys.exit(-1)
+        else:
+            images = [cv2.imread(path, -1) for path in paths]
+            
+            ### reading CSI-Cancer compressed images
+            suffix = paths[0].split('.')[-1]
+            tags = [path.replace(f'.{suffix}', '.tags') for path in paths]
+
+            if suffix == 'jpg' and os.path.exists(tags[0]):
+                vals = utils.readPreservedMinMax(tags)
+                for i in range(len(images)):
+                    a = (vals['maxval'][i] - vals['minval'][i])
+                    b = vals['minval'][i]
+                    images[i] = images[i].astype('float')
+                    images[i] = a * images[i] + b
+                    images[i] = images[i].astype('uint16')
+            ### end of reading compressed images
+
+            self.image = cv2.merge(images)
+
 
     def writeImage(self, path):
         cv2.imwritemulti(self.image, path)
@@ -34,7 +56,8 @@ class Frame:
 
     def writeMask(self, path, name_format="Tile%06d.tif"):
         if self.mask is None:
-            logger.error(f"mask {self.frame_id} is not loaded.")
+            logger.error(f"mask is not loaded!")
+            sys.exit(-1)
         else:
             os.makedirs(path, exist_ok=True)
             cv2.imwrite(
@@ -59,7 +82,7 @@ class Frame:
         "Get channel index for a given channel name"
         if ch not in self.channels:
             logger.error("Channel does not exist in this frame")
-            return None
+            sys.exit(-1)
         else:
             return(self.channels.index(ch))
 
@@ -67,7 +90,7 @@ class Frame:
         "Extracts event image crops from frame images"
         if self.image is None:
             logger.error("frame image is not loaded!")
-            return(None)
+            sys.exit(-1)
 
         elif not mask_flag:
             edge = round((width - 1) / 2)
@@ -90,7 +113,7 @@ class Frame:
 
         elif self.mask is None:
             logger.error("frame mask is not loaded")
-            return(None)
+            sys.exit(-1)
 
         else:
             edge = round((width - 1) / 2)
