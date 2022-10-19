@@ -114,3 +114,31 @@ def calc_basic_features(frame):
     props = props.astype({'cell_id': int})
     props.insert(0, 'frame_id', frame.frame_id)
     return(props)
+
+
+def filter_events(features, filters, verbosity):
+    "Filter detected events before saving the results"
+
+    logger = utils.get_logger('filter_events', verbosity)
+
+    n = len(features)
+    sel = pd.DataFrame({'index' : [True for i in range(n)]})
+
+    
+    for filter in filters:
+        f_name = filter[0]
+        f_min = float(filter[1])
+        f_max = float(filter[2])
+
+        if f_name not in features.columns:
+            logger.warning(f"Cannot filter on {f_name}: Feature not found!")
+            continue
+        else:
+            sel['index'] = sel['index'] &\
+                (features[f_name] >= f_min) &\
+                (features[f_name] <= f_max)
+
+    features = features[sel['index']]
+    logger.info(f"Filtered {n} events down to {len(features)} events")
+
+    return(features)

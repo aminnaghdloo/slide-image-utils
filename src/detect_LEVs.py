@@ -12,34 +12,6 @@ import os
 import utils
 
 
-def filter_events(features, filters, verbosity):
-    "Filter detected events before saving the results"
-
-    logger = utils.get_logger('filter_events', verbosity)
-
-    n = len(features)
-    sel = pd.DataFrame({'index' : [True for i in range(n)]})
-
-    
-    for filter in filters:
-        f_name = filter[0]
-        f_min = float(filter[1])
-        f_max = float(filter[2])
-
-        if f_name not in features.columns:
-            logger.warning(f"Cannot filter on {f_name}: Feature not found!")
-            continue
-        else:
-            sel['index'] = sel['index'] &\
-                (features[f_name] >= f_min) &\
-                (features[f_name] <= f_max)
-
-    features = features[sel['index']]
-    logger.info(f"Filtered {n} events down to {len(features)} events")
-
-    return(features)
-
-
 def process_frame(frame_info, params):
     "Process frame to identify target LEVs"
      
@@ -78,8 +50,8 @@ def process_frame(frame_info, params):
     frame.mask = mask.astype('uint16')
 
     # storing mask
-    if params['mask_path'] is not None:
-        frame.writeMask(params['mask_path'], name_format=params['name_format'])
+    if params['mask_dir'] is not None:
+        frame.writeMask(params['mask_dir'], name_format=params['name_format'])
     
     # extracting features
     features = utils.calc_basic_features(frame)
@@ -112,7 +84,7 @@ def main(args):
         'max_val': args.max_val,
         'low_thresh': args.low,
         'high_thresh': args.high,
-        'mask_path': args.mask_path,
+        'mask_dir': args.mask,
         'name_format': args.format,
         'verbosity': verbosity
     }
@@ -140,7 +112,7 @@ def main(args):
 
     if(len(filters) != 0):
         logger.info("Filtering events...")
-        all_features = filter_events(all_features, filters, verbosity)
+        all_features = utils.filter_events(all_features, filters, verbosity)
         logger.info("Finished filtering events.")
     
     logger.info("Saving features...")
@@ -164,7 +136,7 @@ if __name__ == '__main__':
         help="output file path")
 
     parser.add_argument(
-        '-m', '--mask_path', type=str, default=None,
+        '-m', '--mask', type=str, default=None,
         help="path to a directory to save event masks [optional]")
 
     parser.add_argument(

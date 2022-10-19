@@ -29,7 +29,7 @@ class Frame:
     def showImage(self, channel, annotate=False):
         return None
 
-    def readMask(self, path):
+    def readMask(self, path, name_format="Tile%06d.tif"):
         return None
 
     def writeMask(self, path, name_format="Tile%06d.tif"):
@@ -56,4 +56,63 @@ class Frame:
             return(False)
         
     def get_ch(self, ch):
-        return(self.channels.index(ch))
+        "Get channel index for a given channel name"
+        if ch not in self.channels:
+            logger.error("Channel does not exist in this frame")
+            return None
+        else:
+            return(self.channels.index(ch))
+
+    def extract_crops(self, data, width, mask_flag=False):
+        "Extracts event image crops from frame images"
+        if self.image is None:
+            logger.error("frame image is not loaded!")
+            return(None)
+
+        elif not mask_flag:
+            edge = round((width - 1) / 2)
+            n = len(data)
+            x = data['x'].astype(int) + edge
+            y = data['y'].astype(int) + edge
+            
+            pad = np.zeros(len(self.channels))
+            image = cv2.copyMakeBorder(
+                self.image, edge, edge, edge, edge, cv2.BORDER_CONSTANT, pad)
+
+            indices = data.index.tolist()
+            out = np.zeros((n, width, width, len(self.channels)),dtype='uint16')
+
+            for i, index in enumerate(indices):
+                out[i, ...] = image[(x[index] - edge):(x[index] + edge + 1),
+                                    (y[index] - edge):(y[index] + edge + 1), :]
+
+            return(out)
+
+        elif self.mask is None:
+            logger.error("frame mask is not loaded")
+            return(None)
+
+        else:
+            edge = round((width - 1) / 2)
+            n = len(data)
+            x = data['x'].astype(int) + edge
+            y = data['y'].astype(int) + edge
+            
+            mask = cv2.copyMakeBorder(
+                self.mask, edge, edge, edge, edge, cv2.BORDER_CONSTANT, 0)
+            mask = mask[..., np.newaxis]
+
+            pad = np.zeros(len(self.channels))
+            image = cv2.copyMakeBorder(
+                self.image, edge, edge, edge, edge, cv2.BORDER_CONSTANT, pad)
+            
+            ids = mask[x - 1, y - 1].flatten()
+            indices = data.index.tolist()
+            out = np.zeros((n, width, width, len(self.channels)),dtype='uint16')
+
+            for i, index, id in zip(range(n), indices, ids):
+                scimage = np.multiply(image, (mask == id).astype('uint16'))
+                out[i, ...] = scimage[(x[index] - edge):(x[index] + edge + 1),
+                                      (y[index] - edge):(y[index] + edge + 1),:]
+
+            return(out)
