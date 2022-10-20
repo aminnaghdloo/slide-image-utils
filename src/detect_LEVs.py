@@ -72,6 +72,7 @@ def main(args):
     name_format = args.format
     filters     = args.filter
     verbosity   = args.verbose
+    include_edge= args.include_edge_frames
 
     logger = utils.get_logger(__name__, verbosity)
 
@@ -93,7 +94,7 @@ def main(args):
     frames_info = []
     for i in range(n_frames):
         frame_id = i + offset + 1
-        if utils.is_edge(frame_id):
+        if not include_edge and utils.is_edge(frame_id):
             continue
         paths = utils.generate_tile_paths(
             path=input, frame_id=frame_id, starts=starts,
@@ -187,6 +188,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,
         help="verbosity level")
+    
+    parser.add_argument(
+        '--include_edge_frames', default=False, action='store_true',
+        help="include frames that are on the edge of slide")
 
     parser.add_argument(
         '--filter', type=str, nargs=3, action='append',
