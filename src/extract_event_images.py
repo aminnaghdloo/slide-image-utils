@@ -20,6 +20,7 @@ def main(args):
     channels    = args.channels
     filters     = args.filter
     verbosity   = args.verbose
+    mask_flag   = False if mask_dir is None else True
     
     logger = utils.get_logger(__name__, verbosity)
     df = pd.read_table(data_path)
@@ -31,6 +32,7 @@ def main(args):
         logger.info("Finished filtering events.")
 
     all_images = []
+    all_masks = []
     
     groups = df.groupby('frame_id')
     for frame_id, event_data in groups:
@@ -38,18 +40,25 @@ def main(args):
         paths = utils.generate_tile_paths(
             image_dir, frame_id, starts, name_format)
         frame.readImage(paths)
-        frame.readMask(mask_dir)
-        images = frame.extract_crops(event_data, width)
+        if mask_flag:
+            frame.readMask(mask_dir)
+        images, masks = frame.extract_crops(event_data, width, mask_flag)
         all_images.append(images)
+        all_masks.append(masks)
 
         logger.info(f"{len(event_data)} images extracted from frame {frame_id}")
 
     all_images = np.concatenate(all_images, axis=0)
+    if mask_flag:
+        all_masks = np.concatenate(all_masks, axis=0)
 
     logger.info('Saving extracted images...')
     with h5py.File(output, 'w') as file:
         file.create_dataset('images', data=all_images)
+        file.create_dataset('channels', data=channels)
         file.create_dataset('features', data=df)
+        if mask_flag:
+            file.create_dataset('masks', data=all_masks)
     logger.info('Finished saving extracted images!')
 
 

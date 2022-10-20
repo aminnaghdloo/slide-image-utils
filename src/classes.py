@@ -20,7 +20,8 @@ class Frame:
     def readImage(self, paths):
         if not os.path.exists(paths[0]):
             print(paths[0])
-            logger.error("image is not found!")
+            logger.debug(f"paths[0]: {paths[0]}")
+            logger.error("frame image does not exist!")
             sys.exit(-1)
         else:
             images = [cv2.imread(path, -1) for path in paths]
@@ -38,35 +39,27 @@ class Frame:
                     images[i] = a * images[i] + b
                     images[i] = images[i].astype('uint16')
             ### end of reading compressed images
-
             self.image = cv2.merge(images)
 
-
-    def writeImage(self, path):
-        cv2.imwritemulti(self.image, path)
-    
-    def writeImageRGB(self, path):
-        return None
-
-    def showImage(self, channel, annotate=False):
-        return None
-
-    def readMask(self, path, name_format="Tile%06d.tif"):
-        return None
-
-    def writeMask(self, path, name_format="Tile%06d.tif"):
-        if self.mask is None:
-            logger.error(f"mask is not loaded!")
+    def readMask(self, mask_dir, name_format="Tile%06d.tif"):
+        mask_path = f"{mask_dir}/{name_format}" % self.frame_id
+        if not os.path.exists(mask_path):
+            logger.debug(f"mask_path: {mask_path}")
+            logger.error(f"frame mask does not exist!")
             sys.exit(-1)
         else:
-            os.makedirs(path, exist_ok=True)
+            self.mask = cv2.imread(mask_path, -1)
+
+    def writeMask(self, mask_dir, name_format="Tile%06d.tif"):
+        if self.mask is None:
+            logger.error(f"frame mask is not loaded!")
+            sys.exit(-1)
+        else:
+            os.makedirs(mask_dir, exist_ok=True)
             cv2.imwrite(
-                f"{path}/{name_format}" % self.frame_id,
+                f"{mask_dir}/{name_format}" % self.frame_id,
                 self.mask
             )
-
-    def showMask(self, annotate=False):
-        return None
     
     def is_edge(self):
         if (
@@ -92,27 +85,8 @@ class Frame:
             logger.error("frame image is not loaded!")
             sys.exit(-1)
 
-        elif not mask_flag:
-            edge = round((width - 1) / 2)
-            n = len(data)
-            x = data['x'].astype(int) + edge
-            y = data['y'].astype(int) + edge
-            
-            pad = np.zeros(len(self.channels))
-            image = cv2.copyMakeBorder(
-                self.image, edge, edge, edge, edge, cv2.BORDER_CONSTANT, pad)
-
-            indices = data.index.tolist()
-            out = np.zeros((n, width, width, len(self.channels)),dtype='uint16')
-
-            for i, index in enumerate(indices):
-                out[i, ...] = image[(x[index] - edge):(x[index] + edge + 1),
-                                    (y[index] - edge):(y[index] + edge + 1), :]
-
-            return(out)
-
-        elif self.mask is None:
-            logger.error("frame mask is not loaded")
+        elif mask_flag and self.mask is None:
+            logger.error("frame mask is not loaded!")
             sys.exit(-1)
 
         else:
@@ -121,21 +95,48 @@ class Frame:
             x = data['x'].astype(int) + edge
             y = data['y'].astype(int) + edge
             
-            mask = cv2.copyMakeBorder(
-                self.mask, edge, edge, edge, edge, cv2.BORDER_CONSTANT, 0)
-            mask = mask[..., np.newaxis]
+            indices = data.index.tolist()
+            out_image = np.zeros(
+                (n, width, width, len(self.channels)),dtype='uint16')
 
             pad = np.zeros(len(self.channels))
             image = cv2.copyMakeBorder(
                 self.image, edge, edge, edge, edge, cv2.BORDER_CONSTANT, pad)
             
-            ids = mask[x - 1, y - 1].flatten()
-            indices = data.index.tolist()
-            out = np.zeros((n, width, width, len(self.channels)),dtype='uint16')
+            if mask_flag:
+                out_mask = np.zeros((n, width, width, 1), dtype='uint16')
+                mask = cv2.copyMakeBorder(
+                    self.mask, edge, edge, edge, edge, cv2.BORDER_CONSTANT, 0)
+                mask = mask[..., np.newaxis]
+            
+                for i, index in enumerate(indices):
+                    out_mask[i, ...] = mask[
+                                        (x[index] - edge):(x[index] + edge + 1),
+                                        (y[index] - edge):(y[index] + edge + 1),
+                                        :]
+                    out_image[i, ...] = image[
+                                        (x[index] - edge):(x[index] + edge + 1),
+                                        (y[index] - edge):(y[index] + edge + 1),
+                                        :]
 
-            for i, index, id in zip(range(n), indices, ids):
-                scimage = np.multiply(image, (mask == id).astype('uint16'))
-                out[i, ...] = scimage[(x[index] - edge):(x[index] + edge + 1),
-                                      (y[index] - edge):(y[index] + edge + 1),:]
+                return(out_image, out_mask)
 
-            return(out)
+            else:
+                for i, index in enumerate(indices):
+                    out_image[i, ...] = image[
+                                        (x[index] - edge):(x[index] + edge + 1),
+                                        (y[index] - edge):(y[index] + edge + 1),
+                                        :]
+                return(out_image, None)
+
+    def writeImage(self, path):
+        cv2.imwritemulti(self.image, path)
+    
+    def writeImageRGB(self, path):
+        return None
+
+    def showImage(self, channel, annotate=False):
+        return None
+
+    def showMask(self, annotate=False):
+        return None
