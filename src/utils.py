@@ -119,7 +119,7 @@ def calc_basic_features(frame):
 def filter_events(features, filters, verbosity):
     "Filter detected events before saving the results"
 
-    logger = utils.get_logger('filter_events', verbosity)
+    logger = get_logger('filter_events', verbosity)
 
     n = len(features)
     sel = pd.DataFrame({'index' : [True for i in range(n)]})

@@ -117,7 +117,8 @@ def main(args):
     
     logger.info("Saving features...")
     all_features.to_csv(output, sep='\t', index=False)
-    logger.info(f"Finished saving features of {len(all_features)} events.")
+    logger.info(f"Finished saving features.")
+    print(f"Extracted {len(all_features)} events.")
 
 
 
