@@ -162,3 +162,23 @@ def readPreservedMinMax(meta_names):
     
     vals = {'minval':minval, 'maxval':maxval}
     return(vals)
+
+
+def channels_to_bgr(image, blue_index, green_index, red_index):
+    "Convert image channels to BGR 3-color format for visualization."
+    if len(image.shape) == 3:
+        image = image[np.newaxis, ...]
+    
+    bgr = np.zeros((image.shape[0], image.shape[1], image.shape[2], 3),
+                   dtype='float')
+    if len(blue_index) != 0:
+    	bgr[..., 0] = np.sum(image[..., blue_index], axis=-1)
+    if len(green_index) != 0:
+    	bgr[..., 1] = np.sum(image[..., green_index], axis=-1)
+    if len(red_index) != 0:
+    	bgr[..., 2] = np.sum(image[..., red_index], axis=-1)
+    
+    bgr[bgr > 65535] = 65535
+    bgr = bgr.astype('uint16')
+
+    return(bgr)
