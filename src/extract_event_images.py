@@ -28,9 +28,11 @@ def main(args):
 
     if(len(filters) != 0):
         logger.info("Filtering events...")
-        all_features = utils.filter_events(df, filters, verbosity)
+        df = utils.filter_events(df, filters, verbosity)
         logger.info("Finished filtering events.")
-
+    
+    image_ids = list(range(len(df)))
+    df.insert(0, 'image_id', image_ids)
     all_images = []
     all_masks = []
     
@@ -56,9 +58,10 @@ def main(args):
     with h5py.File(output, 'w') as file:
         file.create_dataset('images', data=all_images)
         file.create_dataset('channels', data=channels)
-        file.create_dataset('features', data=df)
         if mask_flag:
             file.create_dataset('masks', data=all_masks)
+    
+    df.to_hdf(output, mode='a', key='features')
     logger.info('Finished saving extracted images!')
 
 
