@@ -1,3 +1,4 @@
+from skimage import color
 import pandas as pd
 import numpy as np
 import cv2
@@ -102,6 +103,11 @@ def main(args):
     # applying mask on images
     if mask_flag == 1:
         images = np.multiply(images, (masks != 0).astype(int))
+    elif mask_flag == 2:
+        images = color.label2rgb(
+            label=masks[..., 0],
+            image=images, channel_axis=3)
+        images = (images * 65535).astype('uint16')
 
     # cropping images to smaller size if required
     if width < images.shape[1]:
