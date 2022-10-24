@@ -1,9 +1,11 @@
 import logging
 import cv2
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from skimage import measure
+from functools import partial, update_wrapper
 
 
 def get_logger(module_name, verbosity_level):
@@ -181,4 +183,42 @@ def channels_to_bgr(image, blue_index, green_index, red_index):
     bgr[bgr > 65535] = 65535
     bgr = bgr.astype('uint16')
 
+    if len(bgr) == 1:
+        bgr = bgr[0, ...]
+
     return(bgr)
+
+
+def calc_image_hist(image, mask=None, ch=None, bins=2**16, range=None,
+                    density=False):
+    "returns histogram of a single channel 2D image"
+    if ch is None and len(image.shape) > 2:
+        sys.exit(f"{image.shape[-1]}-channel image: Specify channel input 'ch'")
+    else:
+        image = image[..., ch] if len(image.shape) > 2 else image
+        if mask is None:
+            hist, _ = np.histogram(
+                image, bins=bins, range=range, density=density)
+        else:
+            assert image.shape == mask.shape
+            hist, _ = np.histogram(
+                image[mask.astype(bool)], bins=bins, range=range,
+                density=density)
+
+        return(hist)
+
+
+def calc_event_hist(mask, image, bins=2**16, range=None, density=False):
+    "returns histogram of a single channel 2D image using a given mask"
+    assert image.shape == mask.shape
+    hist, _ = np.histogram(
+        image[mask.astype(bool)], bins=bins, range=range, density=density)
+
+    return(hist)
+
+
+def wrapped_partial(func, *args, **kwargs):
+    "returns a function that is a copy of 'func' filling input argument values"
+    partial_func = partial(func, *args, **kwargs)
+    update_wrapper(partial_func, func)
+    return(partial_func)

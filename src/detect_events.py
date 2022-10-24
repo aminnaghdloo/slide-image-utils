@@ -82,7 +82,7 @@ def segment_frame(frame, params):
     frame.mask = event_mask.astype('uint16')
     if params['mask_path'] is not None:
         frame.writeMask(params['mask_path'])
-    features = utils.calc_basic_features(frame)
+    features = frame.calc_basic_features()
     
     logger.info(f"Finished processing frame {frame.frame_id}")
     

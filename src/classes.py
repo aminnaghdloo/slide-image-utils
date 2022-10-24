@@ -1,7 +1,9 @@
+from skimage import measure
+import pandas as pd
+import numpy as np
 import os
 import sys
 import cv2
-import numpy as np
 import utils
 
 logger = utils.get_logger(__name__, 20)
@@ -44,8 +46,7 @@ class Frame:
     def readMask(self, mask_dir, name_format="Tile%06d.tif"):
         mask_path = f"{mask_dir}/{name_format}" % self.frame_id
         if not os.path.exists(mask_path):
-            logger.debug(f"mask_path: {mask_path}")
-            logger.error(f"frame mask does not exist!")
+            logger.error(f"mask {mask_path} does not exist!")
             sys.exit(-1)
         else:
             self.mask = cv2.imread(mask_path, -1)
@@ -78,6 +79,52 @@ class Frame:
             sys.exit(-1)
         else:
             return(self.channels.index(ch))
+
+    def calc_basic_features(self):
+        "Extract basic features of events from frame image."
+        if self.image is None:
+            logger.error("frame image is not loaded!")
+            sys.exit(-1)
+        elif self.mask is None:
+            logger.error("frame mask is not loaded!")
+            sys.exit(-1)
+        else:
+            props = measure.regionprops_table(
+                self.mask, self.image, separator='_',
+                properties=[
+                    'label', 'centroid', 'area', 'eccentricity',
+                    'intensity_mean']
+            )
+            props = pd.DataFrame(props)
+            colnames = ['cell_id', 'x', 'y', 'area', 'eccentricity']
+            colnames.extend([ch + '_mean' for ch in self.channels])
+            props.set_axis(colnames, axis=1, inplace=True)
+            props = props.astype({'cell_id': int})
+            props.insert(0, 'frame_id', self.frame_id)
+            return(props)
+
+    def calc_event_features(self, func, channel, prefix):
+        "Extract desired features of events from frame image."
+        if self.image is None:
+            logger.error("frame image is not loaded!")
+            sys.exit(-1)
+        elif self.mask is None:
+            logger.error("frame mask is not loaded!")
+            sys.exit(-1)
+        else:
+            props = measure.regionprops_table(
+                self.mask, self.image[..., self.get_ch(channel)],
+                properties=('label', 'centroid','area'),
+                extra_properties=[func]
+            )
+            props = pd.DataFrame(props)
+            colnames = ['cell_id', 'x', 'y', 'area']
+            n_extra = len(props.axes[1]) - len(colnames)
+            colnames.extend([prefix + '_' + str(i+1) for i in range(n_extra)])
+            props.set_axis(colnames, axis=1, inplace=True)
+            props = props.astype({'cell_id': int})
+            props.insert(0, 'frame_id', self.frame_id)
+            return(props)
 
     def extract_crops(self, data, width, mask_flag=False):
         "Extracts event image crops from frame images"

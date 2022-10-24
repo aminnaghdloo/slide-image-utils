@@ -54,8 +54,8 @@ def process_frame(frame_info, params):
         frame.writeMask(params['mask_dir'], name_format=params['name_format'])
     
     # extracting features
-    features = utils.calc_basic_features(frame)
-    logger.info(f"Finished processing frame {frame.frame_id}")
+    features = frame.calc_basic_features()
+    logger.info(f"Finished processing frame {frame_id}")
 
     return(features)
 
@@ -166,8 +166,8 @@ if __name__ == '__main__':
         help="number of threads for parallel processing")
 
     parser.add_argument(
-        '-r', '--target_channel', type=str, default='TRITC',
-        help="target channel id for LEV detection")
+        '-T', '--target_channel', type=str, default='TRITC',
+        help="target channel name for LEV detection")
 
     parser.add_argument(
         '-L', '--low', type=float, default=99.9,
