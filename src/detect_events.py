@@ -82,7 +82,7 @@ def segment_frame(frame, params):
     frame.mask = event_mask.astype('uint16')
     if params['mask_path'] is not None:
         frame.writeMask(params['mask_path'])
-    features = utils.calc_basic_features(frame)
+    features = frame.calc_basic_features()
     
     logger.info(f"Finished processing frame {frame.frame_id}")
     
@@ -95,14 +95,15 @@ def main(args):
     logger = utils.get_logger(__name__, args.verbose)
     
     # input variables
-    in_path = args.input
-    out_path = args.output
-    n_frames = args.nframes
-    channels = args.channels
-    starts = args.starts
-    offset = args.offset
-    name_format = args.format
-    n_threads = args.threads
+    in_path         = args.input
+    out_path        = args.output
+    n_frames        = args.nframes
+    channels        = args.channels
+    starts          = args.starts
+    offset          = args.offset
+    name_format     = args.format
+    n_threads       = args.threads
+    include_edge    = args.include_edge_frames
     
     # segmentation parameters
     params = {
@@ -133,7 +134,7 @@ def main(args):
             path=in_path, frame_id=frame_id, starts=starts,
             name_format=name_format)
         frame = Frame(frame_id=frame_id, channels=channels)
-        if frame.is_edge():
+        if not include_edge and frame.is_edge():
             continue
         frame.readImage(paths=paths)
         frames.append(frame)
@@ -215,6 +216,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--exclude_border', default=False, action='store_true',
         help="exclude events that are on image borders")
+    parser.add_argument(
+        '--include_edge_frames', default=False, action='store_true',
+        help="include frames that are on the edge of slide")
     
 
     args = parser.parse_args()

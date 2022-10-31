@@ -12,34 +12,6 @@ import os
 import utils
 
 
-def filter_events(features, filters, verbosity):
-    "Filter detected events before saving the results"
-
-    logger = utils.get_logger('filter_events', verbosity)
-
-    n = len(features)
-    sel = pd.DataFrame({'index' : [True for i in range(n)]})
-
-    
-    for filter in filters:
-        f_name = filter[0]
-        f_min = float(filter[1])
-        f_max = float(filter[2])
-
-        if f_name not in features.columns:
-            logger.warning(f"Cannot filter on {f_name}: Feature not found!")
-            continue
-        else:
-            sel['index'] = sel['index'] &\
-                (features[f_name] >= f_min) &\
-                (features[f_name] <= f_max)
-
-    features = features[sel['index']]
-    logger.info(f"Filtered {n} events down to {len(features)} events")
-
-    return(features)
-
-
 def process_frame(frame_info, params):
     "Process frame to identify target LEVs"
      
@@ -78,12 +50,12 @@ def process_frame(frame_info, params):
     frame.mask = mask.astype('uint16')
 
     # storing mask
-    if params['mask_path'] is not None:
-        frame.writeMask(params['mask_path'], name_format=params['name_format'])
+    if params['mask_dir'] is not None:
+        frame.writeMask(params['mask_dir'], name_format=params['name_format'])
     
     # extracting features
-    features = utils.calc_basic_features(frame)
-    logger.info(f"Finished processing frame {frame.frame_id}")
+    features = frame.calc_basic_features()
+    logger.info(f"Finished processing frame {frame_id}")
 
     return(features)
 
@@ -100,6 +72,7 @@ def main(args):
     name_format = args.format
     filters     = args.filter
     verbosity   = args.verbose
+    include_edge= args.include_edge_frames
 
     logger = utils.get_logger(__name__, verbosity)
 
@@ -112,7 +85,7 @@ def main(args):
         'max_val': args.max_val,
         'low_thresh': args.low,
         'high_thresh': args.high,
-        'mask_path': args.mask_path,
+        'mask_dir': args.mask,
         'name_format': args.format,
         'verbosity': verbosity
     }
@@ -121,7 +94,7 @@ def main(args):
     frames_info = []
     for i in range(n_frames):
         frame_id = i + offset + 1
-        if utils.is_edge(frame_id):
+        if not include_edge and utils.is_edge(frame_id):
             continue
         paths = utils.generate_tile_paths(
             path=input, frame_id=frame_id, starts=starts,
@@ -140,12 +113,13 @@ def main(args):
 
     if(len(filters) != 0):
         logger.info("Filtering events...")
-        all_features = filter_events(all_features, filters, verbosity)
+        all_features = utils.filter_events(all_features, filters, verbosity)
         logger.info("Finished filtering events.")
     
     logger.info("Saving features...")
     all_features.to_csv(output, sep='\t', index=False)
-    logger.info(f"Finished saving features of {len(all_features)} events.")
+    logger.info(f"Finished saving features.")
+    print(f"Extracted {len(all_features)} events.")
 
 
 
@@ -164,7 +138,7 @@ if __name__ == '__main__':
         help="output file path")
 
     parser.add_argument(
-        '-m', '--mask_path', type=str, default=None,
+        '-m', '--mask', type=str, default=None,
         help="path to a directory to save event masks [optional]")
 
     parser.add_argument(
@@ -192,8 +166,8 @@ if __name__ == '__main__':
         help="number of threads for parallel processing")
 
     parser.add_argument(
-        '-r', '--target_channel', type=str, default='TRITC',
-        help="target channel id for LEV detection")
+        '-T', '--target_channel', type=str, default='TRITC',
+        help="target channel name for LEV detection")
 
     parser.add_argument(
         '-L', '--low', type=float, default=99.9,
@@ -214,6 +188,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,
         help="verbosity level")
+    
+    parser.add_argument(
+        '--include_edge_frames', default=False, action='store_true',
+        help="include frames that are on the edge of slide")
 
     parser.add_argument(
         '--filter', type=str, nargs=3, action='append',

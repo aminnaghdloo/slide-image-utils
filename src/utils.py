@@ -1,9 +1,11 @@
 import logging
 import cv2
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from skimage import measure
+from functools import partial, update_wrapper
 
 
 def get_logger(module_name, verbosity_level):
@@ -114,3 +116,109 @@ def calc_basic_features(frame):
     props = props.astype({'cell_id': int})
     props.insert(0, 'frame_id', frame.frame_id)
     return(props)
+
+
+def filter_events(features, filters, verbosity):
+    "Filter detected events before saving the results"
+
+    logger = get_logger('filter_events', verbosity)
+
+    n = len(features)
+    sel = pd.DataFrame({'index' : [True for i in range(n)]})
+
+    
+    for filter in filters:
+        f_name = filter[0]
+        f_min = float(filter[1])
+        f_max = float(filter[2])
+
+        if f_name not in features.columns:
+            logger.warning(f"Cannot filter on {f_name}: Feature not found!")
+            continue
+        else:
+            sel['index'] = sel['index'] &\
+                (features[f_name] >= f_min) &\
+                (features[f_name] <= f_max)
+
+    features = features[sel['index']]
+    logger.info(f"Filtered {n} events down to {len(features)} events")
+
+    return(features)
+
+
+def readPreservedMinMax(meta_names):
+    "This function reads preserved min and max pixel values for JPEG images."
+    minval = []
+    maxval = []
+    for i in range(len(meta_names)):
+        with open(meta_names[i]) as file:
+            lines = file.read().splitlines()
+            for line in lines:
+                tag, val = line.split('=')
+                
+                if tag == 'PreservedMinValue':
+                    minval.append(int(float(val) * 256))
+                    
+                elif tag == 'PreservedMaxValue':
+                    maxval.append(int(float(val) * 256))
+    
+    vals = {'minval':minval, 'maxval':maxval}
+    return(vals)
+
+
+def channels_to_bgr(image, blue_index, green_index, red_index):
+    "Convert image channels to BGR 3-color format for visualization."
+    if len(image.shape) == 3:
+        image = image[np.newaxis, ...]
+    
+    bgr = np.zeros((image.shape[0], image.shape[1], image.shape[2], 3),
+                   dtype='float')
+    if len(blue_index) != 0:
+    	bgr[..., 0] = np.sum(image[..., blue_index], axis=-1)
+    if len(green_index) != 0:
+    	bgr[..., 1] = np.sum(image[..., green_index], axis=-1)
+    if len(red_index) != 0:
+    	bgr[..., 2] = np.sum(image[..., red_index], axis=-1)
+    
+    bgr[bgr > 65535] = 65535
+    bgr = bgr.astype('uint16')
+
+    if len(bgr) == 1:
+        bgr = bgr[0, ...]
+
+    return(bgr)
+
+
+def calc_image_hist(image, mask=None, ch=None, bins=2**16, range=None,
+                    density=False):
+    "returns histogram of a single channel 2D image"
+    if ch is None and len(image.shape) > 2:
+        sys.exit(f"{image.shape[-1]}-channel image: Specify channel input 'ch'")
+    else:
+        image = image[..., ch] if len(image.shape) > 2 else image
+        if mask is None:
+            hist, _ = np.histogram(
+                image, bins=bins, range=range, density=density)
+        else:
+            assert image.shape == mask.shape
+            hist, _ = np.histogram(
+                image[mask.astype(bool)], bins=bins, range=range,
+                density=density)
+
+        return(hist)
+
+
+def calc_event_hist(mask, image, bins=2**16, range=None, density=False):
+    "returns histogram of a single channel 2D image using a given mask"
+    assert image.shape == mask.shape
+    hist, _ = np.histogram(
+        image[mask.astype(bool)], bins=bins, range=range, density=density)
+
+    return(hist)
+
+
+def wrapped_partial(func, *args, **kwargs):
+    "returns a function that is a copy of 'func' filling input argument values"
+    partial_func = partial(func, *args, **kwargs)
+    update_wrapper(partial_func, func)
+    return(partial_func)
