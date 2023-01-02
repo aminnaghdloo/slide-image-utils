@@ -43,7 +43,7 @@ def main(args):
             image_dir, frame_id, starts, name_format)
         frame.readImage(paths)
         if mask_flag:
-            frame.readMask(mask_dir)
+            frame.readMask(mask_dir, name_format=name_format)
         images, masks = frame.extract_crops(event_data, width, mask_flag)
         all_images.append(images)
         all_masks.append(masks)

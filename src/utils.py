@@ -138,7 +138,7 @@ def filter_events(features, filters, verbosity):
         else:
             sel['index'] = sel['index'] &\
                 (features[f_name] >= f_min) &\
-                (features[f_name] <= f_max)
+                (features[f_name] < f_max)
 
     features = features[sel['index']]
     logger.info(f"Filtered {n} events down to {len(features)} events")
