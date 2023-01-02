@@ -12,6 +12,8 @@ import utils
 
 def create_gallery(images, n_x, n_y):
     "Create 2D gallery from list of images."
+    if len(images.shape) == 3:
+        images = images[np.newaxis,...]
     shape = images.shape
     h = shape[1] * n_y
     w = shape[2] * n_x
@@ -56,7 +58,7 @@ def main(args):
     if data_path is None:
         df = pd.read_hdf(input, key='features')
     else:
-        df = pd.read_table(data_path, sep='\t', header=True)
+        df = pd.read_table(data_path, sep='\t')
 
     with h5py.File(input, 'r') as file:
         if 'images' not in file.keys():
