@@ -39,6 +39,7 @@ class Frame:
                     b = vals['minval'][i]
                     images[i] = images[i].astype('float')
                     images[i] = a * images[i] + b
+                    images[i][images[i] > 65535] = 65535
                     images[i] = images[i].astype('uint16')
             ### end of reading compressed images
             self.image = cv2.merge(images)
