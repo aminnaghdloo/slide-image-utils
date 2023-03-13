@@ -626,26 +626,131 @@ def cropCells(frame, xy_data, width, mask_flag):
     xy_data.x = xy_data.x.astype(int) + edge
     xy_data.y = xy_data.y.astype(int) + edge
     pad_color = np.zeros(len(channels))
-    mask = cv2.copyMakeBorder(frame.cellmask, edge, edge, edge, edge, 
-                    cv2.BORDER_CONSTANT, 0)
-    mask = mask.reshape((mask.shape[0], mask.shape[1], 1))
     image = cv2.copyMakeBorder(frame.image, edge, edge, edge, edge,
                     cv2.BORDER_CONSTANT, pad_color)
-    ids = mask[xy_data.x - 1, xy_data.y - 1].flatten()
     indices = xy_data.index.tolist()
     out = np.zeros((xy_data.shape[0], width, width, len(channels)),
                     dtype='uint16')
-    for i,index,id in zip(range(xy_data.shape[0]), indices, ids):
-        if(mask_flag):
+
+    if mask_flag:
+        mask = cv2.copyMakeBorder(frame.cellmask, edge, edge, edge, edge, 
+                        cv2.BORDER_CONSTANT, 0)
+        mask = mask.reshape((mask.shape[0], mask.shape[1], 1))
+        ids = mask[xy_data.x - 1, xy_data.y - 1].flatten()
+        for i,index,id in zip(range(xy_data.shape[0]), indices, ids):
             scimage = np.multiply(image, (mask == id).astype('uint16'))
-        else:
-            scimage = image
-        out[i,:,:,:] = scimage[(xy_data.loc[index, 'x'] - edge):
+            out[i,:,:,:] = scimage[(xy_data.loc[index, 'x'] - edge):
                         (xy_data.loc[index, 'x'] + edge + 1),
                         (xy_data.loc[index, 'y'] - edge):
                         (xy_data.loc[index, 'y'] + edge + 1),:]
+    else:
+        for i,index in zip(range(xy_data.shape[0]), indices):
+            out[i,:,:,:] = image[(xy_data.loc[index, 'x'] - edge): 
+                        (xy_data.loc[index, 'x'] + edge + 1),
+                        (xy_data.loc[index, 'y'] - edge): 
+                        (xy_data.loc[index, 'y'] + edge + 1),:]
     
     return(out)
+
+
+def getEventImages(input_file, data_path, mask_dir, width, mask_flag=0):
+    '''
+    file_path: a tab-delimited list of cells including 4 columns:
+    <slide_id>  <frame_id>  <x> <y>,
+    width: cropping size of each individual cell image
+    mask: flag to mask the individual cell of interest
+    '''
+        
+    if isinstance(input_file, pd.DataFrame):
+        cell_info = input_file
+    elif isinstance(input_file, str):
+        cell_info = pd.read_table(input_file)
+    
+    cell_info.frame_id = cell_info.frame_id.astype(int)
+    
+    images = []
+    
+    groups = cell_info.groupby(['slide_id', 'frame_id'])
+    
+    for slide_id, frame_id in groups.indices:
+        image = getFrameImage(slide_id, frame_id)
+        mask_name = f"{data_path}/{slide_id}/{mask_dir}/{frame_id}.tif"
+        mask = cv2.imread(mask_name, -1)
+        index = groups.indices[(slide_id, frame_id)]
+        images.append(
+            extractEventCrops(
+                image, mask, cell_info.loc[index.tolist(), ['x','y']],
+                width, mask_flag
+            )
+        )
+        print(f"{len(index)} cell images extracted from slide_id:{slide_id}"
+              f", frame_id:{frame_id}")
+    
+    images = np.concatenate(images, axis=0)
+    return(images)
+
+
+def extractEventCrops(image, mask, xy_data, width, mask_flag=0):
+    "Extracts an array event cropped images based on given mask."
+    edge = round((width - 1) / 2)
+    n = len(xy_data)
+    x = xy_data.x.astype(int) + edge
+    y = xy_data.y.astype(int) + edge
+    
+    mask = cv2.copyMakeBorder(mask, edge, edge, edge, edge, 
+                              cv2.BORDER_CONSTANT, 0)
+    mask = mask[..., np.newaxis]
+    
+    pad_color = np.zeros(image.shape[-1])
+    image = cv2.copyMakeBorder(image, edge, edge, edge, edge,
+                               cv2.BORDER_CONSTANT, pad_color)
+    
+    ids = mask[x - 1, y - 1].flatten()
+    indices = xy_data.index.tolist()
+    out = np.zeros((n, width, width, image.shape[-1]), dtype='uint16')
+
+    for i, index, cid in zip(range(n), indices, ids):
+        if mask_flag == 1:
+            scimage = np.multiply(image, (mask == cid).astype('uint16'))
+        elif mask_flag == 2:
+            scimage = overlayMask(channels2rgb(image), mask, cell_id=cid)
+        else:
+            scimage = image
+        out[i,:,:,:] = scimage[(x[index] - edge):(x[index] + edge + 1),
+                               (y[index] - edge):(y[index] + edge + 1), :]
+        
+    return(out)
+
+
+def overlayMask(image, mask, cell_id=None, color=(65535, 65535, 0)):
+    "Takes RGB image and a mask, and returns the overlay of image with mask."
+    assert image.shape[-1] == 3
+    if cell_id is None:
+        mask = (mask != 0).astype('uint8')
+    else:
+        mask = (mask == cell_id).astype('uint8')
+        
+    contours, _ = cv2.findContours(mask, cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
+    for i,c in enumerate(contours):
+        cv2.drawContours(image, [c], -1, color, 1)
+        
+    return(image)
+
+
+def extractMaskInfo(image, mask, slide_id, frame_id):
+    "Extract cell info of the frame image based on the mask."
+    props = measure.regionprops_table(mask, image, separator='_',
+                properties=['label', 'centroid', 'area', 'eccentricity',
+                            'intensity_mean']
+                )
+    props = pd.DataFrame(props)
+    colnames = ['cell_id', 'x', 'y', 'area', 'eccentricity']
+    colnames.extend([ch+'_mean' for ch in channels.keys()])
+    props.set_axis(colnames, axis=1, inplace=True)
+    props = props.astype({'cell_id': int})
+    props.insert(0, 'slide_id', slide_id)
+    props.insert(1, 'frame_id', frame_id)
+    return(props)
 
 
 def channels2rgb(image):
