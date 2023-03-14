@@ -1,4 +1,4 @@
-from skimage import segmentation, measure
+from skimage import segmentation, measure, morphology
 from functools import partial
 from classes import Frame
 import pandas as pd
@@ -38,6 +38,8 @@ def process_frame(frame_info, params):
 
     # image segmentation using double thresholding
     target_image = image_copy[..., params['channel_id']]
+    target_image = cv2.bilateralFilter(target_image.astype(np.float32),15,75,75)
+    target_image = target_image.astype('uint16')
     th1 = np.percentile(target_image, params['low_thresh'])
     ret, foreground = cv2.threshold(
         target_image, th1, params['max_val'], cv2.THRESH_BINARY)
@@ -45,8 +47,12 @@ def process_frame(frame_info, params):
     th2 = params['high_thresh'] * np.median(masked_image)
     ret, seeds = cv2.threshold(
         target_image, th2, params['max_val'], cv2.THRESH_BINARY)
-    seeds = measure.label(seeds)
-    mask = segmentation.watershed(-foreground, seeds, mask=foreground)
+    opening_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+    seeds = cv2.morphologyEx(seeds.astype('uint16'),
+                    cv2.MORPH_OPEN, opening_kernel)
+    mask = morphology.reconstruction(seeds, foreground)
+    mask = measure.label(mask.astype('uint16'))
+    # mask = segmentation.watershed(-foreground, seeds, mask=foreground)
     frame.mask = mask.astype('uint16')
 
     # storing mask

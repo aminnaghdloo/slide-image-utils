@@ -10,30 +10,13 @@ import argparse
 import utils
 
 
-def create_gallery(images, n_x, n_y):
-    "Create 2D gallery from list of images."
-    if len(images.shape) == 3:
-        images = images[np.newaxis,...]
-    shape = images.shape
-    h = shape[1] * n_y
-    w = shape[2] * n_x
-    d = shape[3]
-    pages = math.ceil(len(images)/(n_y * n_x))
-    n_total = pages * n_y * n_x
-    n_current = len(images)
-    if(n_total != n_current):
-        filler = np.zeros((n_total - n_current, shape[1], shape[2], d),
-                          dtype = images.dtype)
-        images = np.append(images, filler, axis=0)
-    gallery = np.zeros((pages, h, w, d), dtype='uint16')
-    for k in range(pages):
-        gallery[k, :, :, :] = np.vstack(
-            [np.hstack(
-                [images[(k * n_x * n_y) + (j * n_x) + i, :, :, :]
-                     for i in range(n_x)]
-                ) for j in range(n_y)]
-            )
-    return(gallery)
+def channels2montage(images, b_index, g_index, r_index, order_index):
+    "Create montages from list of images."
+    bgr = utils.channels_to_bgr(images, b_index, g_index, r_index)
+    gray = np.concatenate([images[:,:,:,k] for k in order_index], axis=2)
+    gray = np.stack([gray] * 3, axis=3)
+    montages = np.concatenate([bgr, gray], axis=2)
+    return montages
 
 
 def main(args):
@@ -43,11 +26,10 @@ def main(args):
     data_path   = args.data
     output      = args.output
     width       = args.width
-    n_x         = args.nx
-    n_y         = args.ny
     red         = args.red
     green       = args.green
     blue        = args.blue
+    order       = args.order
     filters     = args.filter
     verbosity   = args.verbose
     mask_flag   = args.mask_flag
@@ -72,6 +54,12 @@ def main(args):
             channels = [item.decode() for item in file['channels']]
             masks = file['masks'][:] if 'masks' in file.keys() else None
 
+            if len(images.shape) == 3:
+                images = images[np.newaxis, ...]
+
+                if masks is not None:
+                    masks = masks[np.newaxis, ...]
+
 
     # checking the consistency of input arguments with input data
     if masks is None and mask_flag != 0:
@@ -82,9 +70,9 @@ def main(args):
         logger.error("input feature data does not have 'image_id' column")
         sys.exit(-1)
 
-    for channel in list(set(blue) | set(green) | set(red)):
+    for channel in list(set(blue) | set(green) | set(red) | set(order)):
         if channel not in channels:
-            logger.error("input color channels and image channels do not match")
+            logger.error("input channels and image channels do not match")
             sys.exit(-1)
 
     # applying the input filters
@@ -94,40 +82,33 @@ def main(args):
         logger.info("Finished filtering events.")
     images = images[list(df['image_id'])]
     masks = masks[list(df['image_id'])] if masks is not None else None
-    
-    # converting to BGR image for visualization
-    logger.info("Creating the gallery...")
-    red_index = [channels.index(channel) for channel in red]
-    green_index = [channels.index(channel) for channel in green]
-    blue_index = [channels.index(channel) for channel in blue]
-    images = utils.channels_to_bgr(images, blue_index, green_index, red_index)
-    
+
     # applying mask on images
     if mask_flag == 1:
         images = np.multiply(images, (masks != 0).astype(int))
-    elif mask_flag == 2:
-        images = color.label2rgb(
-            label=masks[..., 0],
-            image=images, channel_axis=3)
-        images = (images * 65535).astype('uint16')
-
+   
     # cropping images to smaller size if required
     if width < images.shape[1]:
         gap = (images.shape[1] - width) // 2
         images = images[:, gap:(width + gap), gap:(width + gap), :]
 
-    # create gallery
-    gallery = create_gallery(images=images, n_x=n_x, n_y=n_y)
-    gallery = (gallery // 256).astype('uint8')
+    # create montages
+    logger.info("Creating the montages...")
+    r_index = [channels.index(channel) for channel in red]
+    g_index = [channels.index(channel) for channel in green]
+    b_index = [channels.index(channel) for channel in blue]
+    order_index = [channels.index(channel) for channel in order]
+    montages = channels2montage(images, b_index, g_index, r_index, order_index)
+    montages = (montages // 256).astype('uint8')
 
-    cv2.imwritemulti(output, gallery)
-    logger.info('Finished creating the gallery!')
+    cv2.imwritemulti(output, montages)
+    logger.info('Finished creating the montages!')
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
-        description="Create gallery of events from image crops.",
+        description="Create montages of events from image crops.",
         formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument(
@@ -147,14 +128,6 @@ if __name__ == '__main__':
         help="size of each event image crop (odd)")
 
     parser.add_argument(
-        '-x', '--nx', type=int, default=15,
-        help="number of images along x axis in gallery")
-
-    parser.add_argument(
-        '-y', '--ny', type=int, default=15,
-        help="number of images along y axis in gallery")
-
-    parser.add_argument(
         '-m', '--mask_flag', type=int, default=0, choices=[0, 1, 2],
         help="mask flag")
 
@@ -169,6 +142,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '-B', '--blue', nargs='+', default=[],
         help="channel(s) to be shown in blue color")
+
+    parser.add_argument(
+        '-O', '--order', nargs='+', default=['DAPI', 'TRITC', 'FITC', 'CY5'],
+        help="order of channels in grayscale section of the montage")
 
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,

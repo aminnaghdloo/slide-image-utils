@@ -31,6 +31,9 @@ def main(args):
         df = utils.filter_events(df, filters, verbosity)
         logger.info("Finished filtering events.")
     
+    if 'image_id' in df.columns:
+        df.drop(columns=['image_id'], inplace=True)
+
     image_ids = list(range(len(df)))
     df.insert(0, 'image_id', image_ids)
     all_images = np.zeros((len(df), width, width, len(channels)),
