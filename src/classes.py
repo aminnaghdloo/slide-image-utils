@@ -39,6 +39,7 @@ class Frame:
                     b = vals['minval'][i]
                     images[i] = images[i].astype('float')
                     images[i] = a * images[i] + b
+                    images[i][images[i] > 65535] = 65535
                     images[i] = images[i].astype('uint16')
             ### end of reading compressed images
             self.image = cv2.merge(images)
@@ -101,7 +102,34 @@ class Frame:
             props.set_axis(colnames, axis=1, inplace=True)
             props = props.astype({'cell_id': int})
             props.insert(0, 'frame_id', self.frame_id)
-            return(props)
+        return(props)
+ 
+    def calc_morph_features(self):
+        "Extract basic features of events from frame image."
+        if self.image is None:
+            logger.error("frame image is not loaded!")
+            sys.exit(-1)
+        elif self.mask is None:
+            logger.error("frame mask is not loaded!")
+            sys.exit(-1)
+        else:
+            props = measure.regionprops_table(
+                self.mask, self.image, separator='_',
+                properties=[
+                    'label', 'centroid', 'area', 'eccentricity',
+                    'axis_major_length', 'axis_minor_length',
+                    'equivalent_diameter_area', 'extent', 'feret_diameter_max',
+                    'perimeter', 'intensity_mean']
+            )
+            props = pd.DataFrame(props)
+            colnames = ['cell_id', 'x', 'y', 'area', 'eccentricity',
+                        'major_axis', 'minor_axis', 'diameter','ratio_bb',
+                        'feret_diameter', 'perimeter']
+            colnames.extend([ch + '_mean' for ch in self.channels])
+            props.set_axis(colnames, axis=1, inplace=True)
+            props = props.astype({'cell_id': int})
+            props.insert(0, 'frame_id', self.frame_id)
+        return(props)
 
     def calc_event_features(self, func, channel, prefix):
         "Extract desired features of events from frame image."

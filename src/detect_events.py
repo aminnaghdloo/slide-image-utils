@@ -23,6 +23,8 @@ def segment_frame(frame, params):
     
     # Preparing input
     image_copy = frame.image.copy()
+    if len(image_copy.shape) == 2:
+            image_copy = image_copy[..., np.newaxis]
     image_copy = image_copy.astype('float32')
     
     # Preparing segmentation parameters

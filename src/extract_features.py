@@ -13,7 +13,7 @@ import utils
 
 
 def process_frame(frame_info, params):
-    "Process frame to identify target LEVs"
+    "Process frame to extract morphometric features"
      
     logger = utils.get_logger("process_frame", params['verbosity'])
     (frame_id, paths) = frame_info
@@ -22,45 +22,10 @@ def process_frame(frame_info, params):
     # loading frame image
     frame = Frame(frame_id=frame_id, channels=params['channels'])
     frame.readImage(paths=paths)
-    image_copy = frame.image.copy()
-    image_copy = image_copy.astype('float32')
-
-    # preprocessing image
-    tophat_kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (params['tophat_size'], params['tophat_size']))
-
-    for i in range(len(frame.channels)):
-        image_copy[..., i] = cv2.morphologyEx(
-            image_copy[..., i],
-            cv2.MORPH_TOPHAT,
-            tophat_kernel
-        )
-
-    # image segmentation using double thresholding
-    target_image = image_copy[..., params['channel_id']]
-    target_image = cv2.bilateralFilter(target_image.astype(np.float32),15,75,75)
-    target_image = target_image.astype('uint16')
-    th1 = np.percentile(target_image, params['low_thresh'])
-    ret, foreground = cv2.threshold(
-        target_image, th1, params['max_val'], cv2.THRESH_BINARY)
-    masked_image = target_image[foreground != 0]
-    th2 = params['high_thresh'] * np.median(masked_image)
-    ret, seeds = cv2.threshold(
-        target_image, th2, params['max_val'], cv2.THRESH_BINARY)
-    opening_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    seeds = cv2.morphologyEx(seeds.astype('uint16'),
-                    cv2.MORPH_OPEN, opening_kernel)
-    mask = morphology.reconstruction(seeds, foreground)
-    mask = measure.label(mask.astype('uint16'))
-    # mask = segmentation.watershed(-foreground, seeds, mask=foreground)
-    frame.mask = mask.astype('uint16')
-
-    # storing mask
-    if params['mask_dir'] is not None:
-        frame.writeMask(params['mask_dir'], name_format=params['name_format'])
+    frame.readMask(mask_dir=params['mask_dir'])
     
     # extracting features
-    features = frame.calc_basic_features()
+    features = frame.calc_morph_features()
     logger.info(f"Finished processing frame {frame_id}")
 
     return(features)
@@ -132,7 +97,7 @@ def main(args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
-        description="Process slide images to detect LEVs with a single channel",
+        description="Collect features from segmented slide images",
         formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument(
@@ -144,8 +109,8 @@ if __name__ == '__main__':
         help="output file path")
 
     parser.add_argument(
-        '-m', '--mask', type=str, default=None,
-        help="path to a directory to save event masks [optional]")
+        '-m', '--mask', type=str, required=True,
+        help="path to slide image masks directory")
 
     parser.add_argument(
         '-f', '--offset', type=int, default=0,

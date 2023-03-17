@@ -31,10 +31,16 @@ def main(args):
         df = utils.filter_events(df, filters, verbosity)
         logger.info("Finished filtering events.")
     
+    if 'image_id' in df.columns:
+        df.drop(columns=['image_id'], inplace=True)
+
     image_ids = list(range(len(df)))
     df.insert(0, 'image_id', image_ids)
-    all_images = []
-    all_masks = []
+    all_images = np.zeros((len(df), width, width, len(channels)),
+                          dtype='uint16')
+    if mask_flag:
+        all_masks = np.zeros((len(df), width, width, len(channels)),
+                             dtype='uint16')
     
     groups = df.groupby('frame_id')
     for frame_id, event_data in groups:
@@ -43,16 +49,16 @@ def main(args):
             image_dir, frame_id, starts, name_format)
         frame.readImage(paths)
         if mask_flag:
-            frame.readMask(mask_dir)
+            frame.readMask(mask_dir, name_format=name_format)
         images, masks = frame.extract_crops(event_data, width, mask_flag)
-        all_images.append(images)
-        all_masks.append(masks)
+        
+        index = groups.indices[frame_id]
+        all_images[index.tolist(), :, :, :] = images
+        
+        if mask_flag:
+            all_masks[index.tolist(), :, :, :] = masks
 
         logger.info(f"{len(event_data)} images extracted from frame {frame_id}")
-
-    all_images = np.concatenate(all_images, axis=0)
-    if mask_flag:
-        all_masks = np.concatenate(all_masks, axis=0)
 
     logger.info('Saving extracted images...')
     with h5py.File(output, 'w') as file:
