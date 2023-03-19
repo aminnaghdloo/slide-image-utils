@@ -1,4 +1,5 @@
 from skimage import segmentation, measure, morphology
+from scipy.ndimage import binary_fill_holes as fill_hole
 from functools import partial
 from classes import Frame
 import pandas as pd
@@ -43,21 +44,21 @@ def process_frame(frame_info, params):
     th1 = np.percentile(target_image, params['low_thresh'])
     ret, foreground = cv2.threshold(
         target_image, th1, params['max_val'], cv2.THRESH_BINARY)
+    foreground = (fill_hole(foreground) * params['max_val']).astype('uint16')
     masked_image = target_image[foreground != 0]
     th2 = params['high_thresh'] * np.median(masked_image)
     ret, seeds = cv2.threshold(
         target_image, th2, params['max_val'], cv2.THRESH_BINARY)
     opening_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    seeds = cv2.morphologyEx(seeds.astype('uint16'),
+    seeds = cv2.morphologyEx(seeds,
                     cv2.MORPH_OPEN, opening_kernel)
     mask = morphology.reconstruction(seeds, foreground)
-    mask = measure.label(mask.astype('uint16'))
-    # mask = segmentation.watershed(-foreground, seeds, mask=foreground)
+    mask = measure.label(mask)
     frame.mask = mask.astype('uint16')
 
     # storing mask
     if params['mask_dir'] is not None:
-        frame.writeMask(params['mask_dir'], name_format=params['name_format'])
+        frame.writeMask(params['mask_dir'])
     
     # extracting features
     features = frame.calc_basic_features()
@@ -176,7 +177,7 @@ if __name__ == '__main__':
         help="target channel name for LEV detection")
 
     parser.add_argument(
-        '-L', '--low', type=float, default=99.9,
+        '-L', '--low', type=float, default=99.7,
         help="low threshold for target channel segmentation [percentile]")
 
     parser.add_argument(
