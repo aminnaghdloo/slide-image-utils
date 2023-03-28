@@ -31,6 +31,7 @@ def main(args):
     blue        = args.blue
     order       = args.order
     filters     = args.filter
+    sorts       = args.sort
     verbosity   = args.verbose
     mask_flag   = args.mask_flag
     
@@ -80,8 +81,18 @@ def main(args):
         logger.info("Filtering events...")
         df = utils.filter_events(df, filters, verbosity)
         logger.info("Finished filtering events.")
-    images = images[list(df['image_id'])]
-    masks = masks[list(df['image_id'])] if masks is not None else None
+    images = images[list(df.index)]
+    masks = masks[list(df.index)] if masks is not None else None
+    df.reset_index(drop=True, inplace=True)
+    
+    # applying the input sortings
+    if(len(sorts) != 0):
+        logger.info("Sorting events...")
+        utils.sort_events(df, sorts, verbosity)
+        logger.info("Finished sorting events.")
+    images = images[list(df.index)]
+    masks = masks[list(df.index)] if masks is not None else None
+    df.reset_index(drop=True, inplace=True)
 
     # applying mask on images
     if mask_flag == 1:
@@ -150,6 +161,18 @@ if __name__ == '__main__':
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,
         help="verbosity level")
+
+    parser.add_argument(
+        '--sort', type=str, nargs=2, action='append',
+        default=[],
+        help="""
+        sort events based on feature values.
+
+        Usage:      <command> --sort <feature> <order>
+        Example:    <command> --sort TRITC_mean I
+        order:      I: Increasing / D: Decreasing
+        """
+    )
 
     parser.add_argument(
         '--filter', type=str, nargs=3, action='append',

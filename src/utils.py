@@ -146,6 +146,25 @@ def filter_events(features, filters, verbosity):
     return(features)
 
 
+def sort_events(features, sorts, verbosity):
+    "Filter detected events before saving the results"
+
+    logger = get_logger('sort_events', verbosity)
+
+    n = len(features)
+    
+    for s in sorts:
+        f_name = s[0]
+        order_flag = True if s[1] == 'A' else False
+
+        if f_name not in features.columns:
+            logger.warning(f"Cannot sort on {f_name}: Feature not found!")
+            continue
+        else:
+            features.sort_values(by=f_name, ascending=order_flag, inplace=True)
+            logger.info(f"sorted events on {f_name}")
+
+
 def readPreservedMinMax(meta_names):
     "This function reads preserved min and max pixel values for JPEG images."
     minval = []
@@ -222,3 +241,12 @@ def wrapped_partial(func, *args, **kwargs):
     partial_func = partial(func, *args, **kwargs)
     update_wrapper(partial_func, func)
     return(partial_func)
+
+
+def apply_gain(image, gain):
+    max_val = np.iinfo(image.dtype).max
+    x = image.astype(np.float32) * gain
+    x[x > max_val] = max_val
+    x = x.astype(image.dtype)
+    return x
+    
