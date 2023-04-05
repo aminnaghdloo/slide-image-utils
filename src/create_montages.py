@@ -112,8 +112,16 @@ def main(args):
     order_index = [channels.index(channel) for channel in order]
     montages = channels2montage(images, b_index, g_index, r_index, order_index)
     montages = (montages // 256).astype('uint8')
+    
+    if args.separate:
+        for i, row in df.iterrows():
+                temp_path = f"{os.path.dirname(output)}/{row.cell_id}-"
+                            f"{row.frame_id}-{int(row.x)}-{int(row.y)}.jpg")
+            cv2.imwrite(temp_path, images[i])
+            logger.info(f"Created {temp_path}")
+    else:
+        cv2.imwritemulti(output, montages)
 
-    cv2.imwritemulti(output, montages)
     logger.info('Finished creating the montages!')
 
 
@@ -160,9 +168,16 @@ if __name__ == '__main__':
         help="order of channels in grayscale section of the montage")
 
     parser.add_argument(
+        '-s', '--separate', action='store_true', default=False,
+        help="""
+        save montages individually for each event as 
+        <cell_id>-<frame_id>-<x>-<y>.jpg"""
+        )
+
+    parser.add_argument(
         '-v', '--verbose', action='count', default=0,
         help="verbosity level")
-
+    
     parser.add_argument(
         '--sort', type=str, nargs=2, action='append',
         default=[],
