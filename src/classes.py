@@ -97,7 +97,7 @@ class Frame:
                     'intensity_mean']
             )
             props = pd.DataFrame(props)
-            colnames = ['cell_id', 'x', 'y', 'area', 'eccentricity']
+            colnames = ['cell_id', 'y', 'x', 'area', 'eccentricity']
             colnames.extend([ch + '_mean' for ch in self.channels])
             props.set_axis(colnames, axis=1, inplace=True)
             props = props.astype({'cell_id': int})
@@ -122,7 +122,7 @@ class Frame:
                     'perimeter', 'intensity_mean']
             )
             props = pd.DataFrame(props)
-            colnames = ['cell_id', 'x', 'y', 'area', 'eccentricity',
+            colnames = ['cell_id', 'y', 'x', 'area', 'eccentricity',
                         'major_axis', 'minor_axis', 'diameter','ratio_bb',
                         'feret_diameter', 'perimeter']
             colnames.extend([ch + '_mean' for ch in self.channels])
@@ -146,7 +146,7 @@ class Frame:
                 extra_properties=[func]
             )
             props = pd.DataFrame(props)
-            colnames = ['cell_id', 'x', 'y', 'area']
+            colnames = ['cell_id', 'y', 'x', 'area']
             n_extra = len(props.axes[1]) - len(colnames)
             colnames.extend([prefix + '_' + str(i+1) for i in range(n_extra)])
             props.set_axis(colnames, axis=1, inplace=True)
@@ -186,12 +186,12 @@ class Frame:
             
                 for i, index in enumerate(indices):
                     out_mask[i, ...] = mask[
-                                        (x[index] - edge):(x[index] + edge + 1),
                                         (y[index] - edge):(y[index] + edge + 1),
+                                        (x[index] - edge):(x[index] + edge + 1),
                                         :]
                     out_image[i, ...] = image[
-                                        (x[index] - edge):(x[index] + edge + 1),
                                         (y[index] - edge):(y[index] + edge + 1),
+                                        (x[index] - edge):(x[index] + edge + 1),
                                         :]
 
                 return(out_image, out_mask)
@@ -199,8 +199,8 @@ class Frame:
             else:
                 for i, index in enumerate(indices):
                     out_image[i, ...] = image[
-                                        (x[index] - edge):(x[index] + edge + 1),
                                         (y[index] - edge):(y[index] + edge + 1),
+                                        (x[index] - edge):(x[index] + edge + 1),
                                         :]
                 return(out_image, None)
 

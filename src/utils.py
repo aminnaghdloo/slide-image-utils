@@ -110,7 +110,7 @@ def calc_basic_features(frame):
             'intensity_mean']
     )
     props = pd.DataFrame(props)
-    colnames = ['cell_id', 'x', 'y', 'area', 'eccentricity']
+    colnames = ['cell_id', 'y', 'x', 'area', 'eccentricity']
     colnames.extend([ch + '_mean' for ch in frame.channels])
     props.set_axis(colnames, axis=1, inplace=True)
     props = props.astype({'cell_id': int})

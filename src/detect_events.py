@@ -28,8 +28,10 @@ def segment_frame(frame, params):
     image_copy = image_copy.astype('float32')
     
     # Preparing segmentation parameters
-    tophat_kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (params['tophat_size'], params['tophat_size']))
+    if params['tophat_size'] != 0:
+        tophat_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (params['tophat_size'], params['tophat_size']))
+
     opening_kernel = cv2.getStructuringElement(
         cv2.MORPH_ELLIPSE, (params['opening_size'], params['opening_size']))
     
@@ -37,12 +39,14 @@ def segment_frame(frame, params):
     target_mask = np.zeros(image_copy.shape[:2], dtype=image_copy.dtype)
     for ch in frame.channels:
         i = frame.get_ch(ch)
+        
+        if params['tophat_size'] != 0:
+            image_copy[..., i] = cv2.morphologyEx(
+                image_copy[..., i],
+                cv2.MORPH_TOPHAT,
+                tophat_kernel
+            )
 
-        image_copy[..., i] = cv2.morphologyEx(
-            image_copy[..., i],
-            cv2.MORPH_TOPHAT,
-            tophat_kernel
-        )
         image_copy[..., i] = cv2.GaussianBlur(
             image_copy[..., i],
             (params['blur_size'], params['blur_size']),
