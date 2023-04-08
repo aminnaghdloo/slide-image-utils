@@ -30,18 +30,20 @@ class Frame:
             
             ### reading CSI-Cancer compressed images
             suffix = paths[0].split('.')[-1]
-            tags = [path.replace(f'.{suffix}', '.tags') for path in paths]
+            if suffix == 'jpg':
+                tags = [path.replace(f'.{suffix}', '.tags') for path in paths]
 
-            if suffix == 'jpg' and os.path.exists(tags[0]):
-                vals = utils.readPreservedMinMax(tags)
-                for i in range(len(images)):
-                    a = (vals['maxval'][i] - vals['minval'][i])
-                    b = vals['minval'][i]
-                    images[i] = images[i].astype('float')
-                    images[i] = a * images[i] + b
-                    images[i][images[i] > 65535] = 65535
-                    images[i] = images[i].astype('uint16')
+                if os.path.exists(tags[0]):
+                    vals = utils.readPreservedMinMax(tags)
+                    for i in range(len(images)):
+                        a = (vals['maxval'][i] - vals['minval'][i])
+                        b = vals['minval'][i]
+                        images[i] = images[i].astype('float')
+                        images[i] = a * images[i] + b
+                        images[i][images[i] > 65535] = 65535
+                        images[i] = images[i].astype('uint16')
             ### end of reading compressed images
+
             self.image = cv2.merge(images)
 
     def readMask(self, mask_dir, name_format="Tile%06d.tif"):

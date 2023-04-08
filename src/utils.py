@@ -199,8 +199,9 @@ def channels_to_bgr(image, blue_index, green_index, red_index):
     if len(red_index) != 0:
     	bgr[..., 2] = np.sum(image[..., red_index], axis=-1)
     
-    bgr[bgr > 65535] = 65535
-    bgr = bgr.astype('uint16')
+    max_val = np.iinfo(image.dtype).max
+    bgr[bgr > max_val] = max_val
+    bgr = bgr.astype(image.dtype)
 
     if len(bgr) == 1:
         bgr = bgr[0, ...]
@@ -244,9 +245,19 @@ def wrapped_partial(func, *args, **kwargs):
 
 
 def apply_gain(image, gain):
+    gain = np.array(gain)
     max_val = np.iinfo(image.dtype).max
+    for dummy in range(len(image.shape) - 1):
+        gain = gain[np.newaxis,...]
     x = image.astype(np.float32) * gain
     x[x > max_val] = max_val
     x = x.astype(image.dtype)
     return x
     
+
+def convert_dtype(image, dtype):
+    scale = (np.iinfo(image.dtype).max + 1) // (np.iinfo(dtype).max + 1)
+    image = image.astype(float)
+    image = image / scale
+    image[image > np.iinfo(dtype).max] = np.iinfo(dtype).max
+    return image.astype(dtype)

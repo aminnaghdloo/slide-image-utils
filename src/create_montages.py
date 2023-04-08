@@ -112,13 +112,13 @@ def main(args):
     order_index = [channels.index(channel) for channel in order]
     montages = channels2montage(images, b_index, g_index, r_index, order_index)
     montages = (montages // 256).astype('uint8')
-    
     if args.separate:
         for i, row in df.iterrows():
-                temp_path = f"{os.path.dirname(output)}/{row.cell_id}-"
-                            f"{row.frame_id}-{int(row.x)}-{int(row.y)}.jpg")
-            cv2.imwrite(temp_path, images[i])
+            temp_path = f"{os.path.dirname(output)}/{int(row.cell_id)}-" \
+                        f"{int(row.frame_id)}-{int(row.y)}-{int(row.x)}.jpg"
+            cv2.imwrite(temp_path, montages[i])
             logger.info(f"Created {temp_path}")
+        df.to_csv(output.replace('.tif', '_montages.txt'),sep='\t',index=False)
     else:
         cv2.imwritemulti(output, montages)
 

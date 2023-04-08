@@ -3,7 +3,7 @@ import sys
 import os
 
 database_path_pref = "/mnt/Y/DZ/"
-database_path_suff = "/reimage_cells_from_file/data.xml"
+database_path_suff = "/file_based/data.xml"
 
 if __name__=='__main__':
 
