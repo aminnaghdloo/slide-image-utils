@@ -62,9 +62,24 @@ def process_frame(frame_info, params):
     
     # extracting features
     features = frame.calc_basic_features()
+    images = None
+    masks = None
+
+    # filtering events
+    if(len(params['filters']) != 0):
+        logger.info("Filtering events...")
+        features = utils.filter_events(features, params['filters'],
+                                       params['verbosity'])
+        logger.info("Finished filtering events.")
+    
+    # extracting event images
+    if params['extract_img']:
+        images, masks = frame.extract_crops(features, params['width'],
+                                            mask_flag=params['mask_flag'])
+        
     logger.info(f"Finished processing frame {frame_id}")
 
-    return(features)
+    return({'features':features, 'images':images, 'masks':masks})
 
 
 def main(args):
@@ -77,9 +92,11 @@ def main(args):
     n_frames    = args.nframes
     n_threads   = args.threads
     name_format = args.format
-    filters     = args.filter
     verbosity   = args.verbose
     include_edge= args.include_edge_frames
+    extract_img = args.extract_images
+    width       = args.width
+    mask_flag   = args.mask_flag
 
     logger = utils.get_logger(__name__, verbosity)
 
@@ -94,6 +111,10 @@ def main(args):
         'high_thresh': args.high,
         'mask_dir': args.mask,
         'name_format': args.format,
+        'filters': args.filter,
+        'extract_img' : extract_img,
+        'mask_flag' : mask_flag,
+        'width' : width,
         'verbosity': verbosity
     }
 
@@ -113,21 +134,42 @@ def main(args):
     logger.info("Processing the frames...")
     n_proc = n_threads if n_threads > 0 else mp.cpu_count()
     pool = mp.Pool(n_proc)
-    features = pool.map(partial(process_frame, params=params), frames_info)
+    data = pool.map(partial(process_frame, params=params), frames_info)
     logger.info("Finished processing the frames.")
     
-    all_features = pd.concat(features, ignore_index=True)
+    logger.info("Collecting features...")
+    all_features = pd.concat([out['features'] for out in data],
+                             ignore_index=True)
 
-    if(len(filters) != 0):
-        logger.info("Filtering events...")
-        all_features = utils.filter_events(all_features, filters, verbosity)
-        logger.info("Finished filtering events.")
+    if extract_img:
+        logger.info("Collecting event images...")
+        all_images = np.concatenate(
+            [out['images'] for out in data if out['images'] is not None],
+            axis=0
+        )
+
+        if mask_flag:
+            logger.info("Collecting event masks...")
+            all_masks = np.concatenate(
+                [out['masks'] for out in data if out['masks'] is not None],
+                axis=0
+            )
     
-    logger.info("Saving features...")
-    all_features.to_csv(output, sep='\t', index=False)
-    logger.info(f"Finished saving features.")
-    print(f"Extracted {len(all_features)} events.")
+    logger.info("Saving data...")
+    if not extract_img:
+        all_features.to_csv(output, sep='\t', index=False)
+    else:
+        output = output.replace('.txt', '.hdf5')
+        with h5py.File(output, 'w') as hf:
+            hf.create_dataset('images', data=all_images)
+            hf.create_dataset('channels', data=args.channels)
+            if mask_flag:
+                hf.create_dataset('masks', data=all_masks)
 
+        all_features.to_hdf(output, mode='a', key='features')
+
+    logger.info(f"Finished saving data.")
+    print(f"Extracted {len(all_features)} events.")
 
 
 if __name__ == '__main__':
@@ -199,6 +241,23 @@ if __name__ == '__main__':
     parser.add_argument(
         '--include_edge_frames', default=False, action='store_true',
         help="include frames that are on the edge of slide")
+    
+    parser.add_argument(
+        '--extract_images', default=False, action='store_true',
+        help="extract images of detected events and output hdf5 file")
+    
+    parser.add_argument(
+        '-w', '--width', type=int, default=35,
+        help="""
+        size of the event images to be cropped from slide images (odd).
+        Works only when --extract_images is set.
+        """
+    )
+
+    parser.add_argument(
+        '--mask_flag', default=False, action='store_true',
+        help="store event masks when extracting images"
+    )
 
     parser.add_argument(
         '--filter', type=str, nargs=3, action='append',
@@ -244,16 +303,3 @@ if __name__ == '__main__':
     main(args)
 
     logger.info("Program finished successfully!")
-
-
-
-
-
-#with h5py.File(f"{data_path}/{slide_id}/{slide_id}_LEVs.hdf5", "w") as hf:
-#    hf.create_dataset('images', data=images)
-
-#features.to_hdf(f"{data_path}/{slide_id}/{slide_id}_LEVs.hdf5", key='features')
-
-#print(f"Successful EV extraction from {slide_id}! (total: {len(images)})")
-#width
-#mask_flag

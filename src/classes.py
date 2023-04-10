@@ -171,6 +171,10 @@ class Frame:
             n = len(data)
             x = data['x'].astype(int) + edge
             y = data['y'].astype(int) + edge
+
+            if n == 0:
+                logger.warning("Empty data file!.")
+                return(None, None)
             
             indices = data.index.tolist()
             out_image = np.zeros(
