@@ -27,15 +27,16 @@ def process_frame(frame_info, params):
     image_copy = image_copy.astype('float32')
 
     # preprocessing image
-    tophat_kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (params['tophat_size'], params['tophat_size']))
+    if params['tophat_size'] != 0:
+        tophat_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (params['tophat_size'], params['tophat_size']))
 
-    for i in range(len(frame.channels)):
-        image_copy[..., i] = cv2.morphologyEx(
-            image_copy[..., i],
-            cv2.MORPH_TOPHAT,
-            tophat_kernel
-        )
+        for i in range(len(frame.channels)):
+            image_copy[..., i] = cv2.morphologyEx(
+                image_copy[..., i],
+                cv2.MORPH_TOPHAT,
+                tophat_kernel
+            )
 
     # image segmentation using double thresholding
     target_image = image_copy[..., params['channel_id']]
@@ -227,7 +228,7 @@ if __name__ == '__main__':
         help="high threshold for target channel segmentation [ratio-to-median]")
 
     parser.add_argument(
-        '-k', '--kernel', type=int, default=45,
+        '-k', '--kernel', type=int, default=75,
         help="size of tophat filter kernel")
 
     parser.add_argument(

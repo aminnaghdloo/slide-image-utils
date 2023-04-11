@@ -209,6 +209,34 @@ class Frame:
                                         (x[index] - edge):(x[index] + edge + 1),
                                         :]
                 return(out_image, None)
+            
+    def calc_background_intensity(self, channels_to_mask=['DAPI', 'CY5']):
+        "Calculate quality control metrics for frame image."
+        if self.image is None:
+            logger.error("frame image is not loaded!")
+            sys.exit(-1)
+        
+        elif not all([ch in self.channels for ch in channels_to_mask]):
+            logger.error("mask channels not in frame channels!")
+            sys.exit(-1)
+
+        else:
+            mask = np.zeros((self.image.shape[0], self.image.shape[1]))
+            for ch in channels_to_mask:
+                ret, thresh = cv2.threshold(self.image[..., self.get_ch(ch)],
+                                            0, np.iinfo(self.image.dtype).max,
+                                            cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+                mask = cv2.bitwise_or(mask, thresh)
+            props = measure.regionprops_table(
+                mask.astype(int), self.image, separator='_',
+                properties=['intensity_mean']
+            )
+            props = pd.DataFrame(props)
+            colnames = [ch + '_mean_bg' for ch in self.channels]
+            props.set_axis(colnames, axis=1, inplace=True)
+            props = props.astype({'cell_id': int})
+            props.insert(0, 'frame_id', self.frame_id)
+        return(props)
 
     def writeImage(self, path):
         cv2.imwritemulti(self.image, path)
