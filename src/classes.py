@@ -173,7 +173,7 @@ class Frame:
             y = data['y'].astype(int) + edge
 
             if n == 0:
-                logger.warning("Empty data file!.")
+                logger.info("Empty data file!")
                 return(None, None)
             
             indices = data.index.tolist()

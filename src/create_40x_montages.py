@@ -48,8 +48,10 @@ def main(args):
         if not all([os.path.isfile(path) for path in paths]):
             index_to_drop.append(index)
             continue
-        
+
         image = np.stack([np.array(Image.open(path)) for path in paths], axis=2)
+        image = np.fliplr(np.flipud(image))
+
         h, w, _ = image.shape
         crop = image[(h // 2 - width // 2):(h // 2 + width // 2 + 1),
                      (w // 2 - width // 2):(w // 2 + width // 2 + 1), :]
