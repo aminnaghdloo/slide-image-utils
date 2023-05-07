@@ -237,6 +237,41 @@ def calc_event_hist(mask, image, bins=2**16, range=None, density=False):
     return(hist)
 
 
+def calc_bg_intensity(frame, channels_to_mask=['DAPI', 'CY5']):
+    """
+    Calculate background intensity means on cellular and acellular (dark) 
+    regions of the frame image.
+    """
+    if frame.image is None:
+        print("frame image is not loaded!")
+        sys.exit(-1)
+    
+    elif not all([ch in frame.channels for ch in channels_to_mask]):
+        print("mask channels not in frame channels!")
+        sys.exit(-1)
+
+    else:
+        props = {}
+        mask = np.zeros((frame.image.shape[0], frame.image.shape[1]),
+                        dtype=frame.image.dtype)
+        for ch in channels_to_mask:
+            ret, thresh = cv2.threshold(frame.image[..., frame.get_ch(ch)],
+                                        0, 1, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+            mask = cv2.bitwise_or(mask, thresh)
+
+        mask = mask.astype(bool)
+        for ch in frame.channels:
+            props[ch + '_mean_cbg'] = np.mean(
+                frame.image[..., frame.get_ch(ch)][mask])
+            props[ch + '_mean_dbg'] = np.mean(
+                frame.image[..., frame.get_ch(ch)][~mask])
+            
+        props['cell_fracion'] = np.sum(mask) / np.product(mask.size)
+        props = pd.DataFrame(props, index=[0])
+        
+    return(props)
+
+
 def wrapped_partial(func, *args, **kwargs):
     "returns a function that is a copy of 'func' filling input argument values"
     partial_func = partial(func, *args, **kwargs)
