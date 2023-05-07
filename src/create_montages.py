@@ -68,9 +68,9 @@ def main(args):
         logger.error("input file does not contain 'masks'")
         sys.exit(-1)
 
-    if 'image_id' not in df.columns:
-        logger.error("input feature data does not have 'image_id' column")
-        sys.exit(-1)
+    #if 'image_id' not in df.columns:
+    #    logger.error("input feature data does not have 'image_id' column")
+    #    sys.exit(-1)
 
     for channel in list(set(blue) | set(green) | set(red) | set(order)):
         if channel not in channels:
@@ -115,7 +115,7 @@ def main(args):
     if args.separate:
         for i, row in df.iterrows():
             temp_path = f"{os.path.dirname(output)}/{int(row.cell_id)}-" \
-                        f"{int(row.frame_id)}-{int(row.y)}-{int(row.x)}.jpg"
+                        f"{int(row.frame_id)}-{int(row.x)}-{int(row.y)}.jpg"
             cv2.imwrite(temp_path, montages[i])
             logger.info(f"Created {temp_path}")
         df.to_csv(output.replace('.tif', '_montages.txt'),sep='\t',index=False)
