@@ -77,7 +77,12 @@ def process_frame(frame_info, params):
     if params['extract_img']:
         images, masks = frame.extract_crops(features, params['width'],
                                             mask_flag=params['mask_flag'])
-        
+
+    # extracting background mean intensities:
+    x = utils.calc_bg_intensity(frame)
+    x = x.reindex(x.index.repeat(len(features))).reset_index(drop=True)
+    features = pd.concat([features, x], axis=1)
+
     logger.info(f"Finished processing frame {frame_id}")
 
     return({'features':features, 'images':images, 'masks':masks})
@@ -98,6 +103,8 @@ def main(args):
     extract_img = args.extract_images
     width       = args.width
     mask_flag   = args.mask_flag
+    filters     = args.filter
+    sorts       = args.sort
 
     logger = utils.get_logger(__name__, verbosity)
 
@@ -142,6 +149,8 @@ def main(args):
     all_features = pd.concat([out['features'] for out in data],
                              ignore_index=True)
 
+    all_images = None
+    all_masks = None
     if extract_img:
         logger.info("Collecting event images...")
         all_images = np.concatenate(
@@ -156,9 +165,31 @@ def main(args):
                 axis=0
             )
     
+    # applying the input filters
+    if(len(filters) != 0):
+        logger.info("Filtering events...")
+        all_features = utils.filter_events(all_features, filters, verbosity)
+        logger.info("Finished filtering events.")
+    all_images = all_images[list(all_features.index)] if all_images is not None\
+         else None
+    all_masks = all_masks[list(all_features.index)] if all_masks is not None\
+         else None
+    all_features.reset_index(drop=True, inplace=True)
+    
+    # applying the input sortings
+    if(len(sorts) != 0):
+        logger.info("Sorting events...")
+        utils.sort_events(all_features, sorts, verbosity)
+        logger.info("Finished sorting events.")
+    all_images = all_images[list(all_features.index)] if all_images is not None\
+         else None
+    all_masks = all_masks[list(all_features.index)] if all_masks is not None\
+         else None
+    all_features.reset_index(drop=True, inplace=True)
+
     logger.info("Saving data...")
     if not extract_img:
-        all_features.to_csv(output, sep='\t', index=False)
+        all_features.round(decimals=3).to_csv(output, sep='\t', index=False)
     else:
         output = output.replace('.txt', '.hdf5')
         with h5py.File(output, 'w') as hf:
@@ -261,17 +292,28 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
+        '--sort', type=str, nargs=2, action='append',
+        default=[],
+        help="""
+        sort events based on feature values.
+
+        Usage:      <command> --sort <feature> <order>
+        Example:    <command> --sort TRITC_mean I
+        order:      I: Increasing / D: Decreasing
+        """
+    )
+
+    parser.add_argument(
         '--filter', type=str, nargs=3, action='append',
         default=[],
-        #default=[['area', '15', '5000'], ['DAPI_mean', '0', '10000']],
         help="""
         feature range for filtering detected events.
-        
+
         Usage:      <command> --feature_range <feature> <min> <max>
         Example:    <command> --feature_range DAPI_mean 0 10000
-        
+
         Acceptable thresholds are listed in the following table:
-        
+
         feature         minimum     maximum
         -------         -------     -------
         area            0           +inf
