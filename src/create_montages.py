@@ -112,9 +112,14 @@ def main(args):
     order_index = [channels.index(channel) for channel in order]
     montages = channels2montage(images, b_index, g_index, r_index, order_index)
     montages = (montages // 256).astype('uint8')
+
     if args.separate:
+        output_path = f"{os.path.dirname(output)}/" \
+                      f"{os.path.basename(output).split('.')[0]}"
+        os.makedirs(output_path, exist_ok=True)
+
         for i, row in df.iterrows():
-            temp_path = f"{os.path.dirname(output)}/{int(row.cell_id)}-" \
+            temp_path = f"{output_path}/{int(row.cell_id)}-" \
                         f"{int(row.frame_id)}-{int(row.x)}-{int(row.y)}.jpg"
             cv2.imwrite(temp_path, montages[i])
             logger.info(f"Created {temp_path}")

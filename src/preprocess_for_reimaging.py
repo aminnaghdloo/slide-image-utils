@@ -9,7 +9,7 @@ if __name__=='__main__':
 
     if len(sys.argv) != 3:
         sys.exit(f"Two arguments are required: "
-                 f"python send_to_reimaging.py <input file> <slide_id>")
+                 f"python preprocess_for_reimaging.py <input file> <slide_id>")
     else:
         input_path = sys.argv[1]
         slide_id = sys.argv[2]
@@ -25,6 +25,7 @@ if __name__=='__main__':
         df = pd.read_table(input_path)
         df.x = df.x.astype('int')
         df.y = df.y.astype('int')
+        df['label'] = df.DAPI_mean.astype('int')
         df['forty_x'] = None
         df['picked'] = None
         df['scope'] = None

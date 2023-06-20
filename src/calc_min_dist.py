@@ -19,13 +19,14 @@ def main():
                  'min_dist':[], 'gap':[],
                  'cell_idw2':[], 'xw2':[], 'yw2':[], 'rw2':[],
                  'min_dist2':[], 'gap2':[],
-                 'gap_c':[]}
+                 'gap_c':[], 'min_dist_c':[], 'dapi_count':[]}
     
     for index, row in LEV_df.iterrows():
 
         # read the WBC file
         WBC_df = pd.read_table(
             f"{WBC_dir_name}/{row['slide_id']}_{row['frame_id']}.txt")
+        dapi_count = len(WBC_df)
         
         # if there are no WBCs or only one, create a dummy dataframe
         if len(WBC_df) < 2:
@@ -46,7 +47,14 @@ def main():
         rw2 = (WBC_df.iloc[indices[1]]['area'] / np.pi) ** 0.5
         gap = distances[0] - r - rw
         gap2 = distances[1] - r - rw2
-        gap_c = gap2 if -gap > r + rw - abs(r - rw) and -gap < r + rw else gap
+
+        if -gap > r + rw - abs(r - rw) and -gap < r + rw:
+            gap_c = gap2
+            min_dist_c = distances[1]
+        else:
+            gap_c = gap
+            min_dist_c = distances[0]
+
         dist_dict['r'].append(r)
         dist_dict['cell_idw'].append(WBC_df.iloc[indices[0]]['cell_id'])
         dist_dict['xw'].append(WBC_df.iloc[indices[0]]['x'])
@@ -61,6 +69,8 @@ def main():
         dist_dict['min_dist2'].append(distances[1])
         dist_dict['gap2'].append(gap2)
         dist_dict['gap_c'].append(gap_c)
+        dist_dict['min_dist_c'].append(min_dist_c)
+        dist_dict['dapi_count'].append(dapi_count)
 
         print(f"processed {index} / {len(LEV_df)} against {len(WBC_df)} WBCs")
 
