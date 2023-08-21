@@ -1,4 +1,4 @@
-from skimage import measure
+from skimage import measure, color
 import pandas as pd
 import numpy as np
 import os
@@ -13,25 +13,26 @@ class Frame:
     A class for frame image data of a slide.
 
     """
-    def __init__(self, frame_id, channels):
+    def __init__(self, frame_id, channels, paths):
         self.frame_id = frame_id
         self.channels = channels
+        self.paths = paths
         self.image = None
         self.mask = None
 
-    def readImage(self, paths):
-        if not os.path.exists(paths[0]):
-            print(paths[0])
-            logger.debug(f"paths[0]: {paths[0]}")
+    def readImage(self):
+        if not os.path.exists(self.paths[0]):
+            print(self.paths[0])
+            logger.debug(f"paths[0]: {self.paths[0]}")
             logger.error("frame image does not exist!")
             sys.exit(-1)
         else:
-            images = [cv2.imread(path, -1) for path in paths]
+            images = [cv2.imread(path, -1) for path in self.paths]
             
             ### reading CSI-Cancer compressed images
-            suffix = paths[0].split('.')[-1]
+            suffix = self.paths[0].split('.')[-1]
             if suffix == 'jpg':
-                tags = [path.replace(f'.{suffix}', '.tags') for path in paths]
+                tags = [path.replace(f'.{suffix}', '.tags') for path in self.paths]
 
                 if os.path.exists(tags[0]):
                     vals = utils.readPreservedMinMax(tags)

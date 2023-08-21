@@ -28,25 +28,28 @@ main = function(){
   parser = OptionParser("Plot slide heatmap of a function")
   parser = add_option(parser, c('-i', '--input'),
                       help="Input tab-delimited file with frame_id [Required]")
-  parser = add_option(parser, c('-t', '--target'),
+  parser = add_option(parser, c('-v', '--variable'),
                       help="Target variable to visualize [Required]")
   parser = add_option(parser, c('-o', '--output'),
                       help="Output image name", default='out.png')
   parser = add_option(parser, c('-s', '--slide'),
                       help="slide_id if the file has multiple slides",
                       default=NA)
+  parser = add_option(parser, c('-t', '--title'),
+                      help="title of the figure",
+                      default="")
   parser = add_option(parser, c('-l', '--label'), action="store_true",
                       help="show numeric values on tiles",
                       default=FALSE)
 
   opt = parse_args(parser)
-  if(is.null(opt$input) | is.null(opt$target)){
+  if(is.null(opt$input) | is.null(opt$variable)){
     print_help(parser)
     quit(status=-1)
   }
 
   df = read.table(opt$input, header=TRUE, sep='\t')
-  column_id = which(names(df) == opt$target)
+  column_id = which(names(df) == opt$variable)
 
   # Filter selected slide
   if(!is.na(opt$slide)){
@@ -55,24 +58,25 @@ main = function(){
   
   # Check the existence of target variable
   if(length(column_id) == 0){
-    print('Target does not exist in column names of input file.')
+    print('Variable does not exist in column names of input file.')
     quit(status=-1)
   }else{
     df = addFrameCoords(df)
     if(opt$label){
-    p1 = ggplot(df, aes_string(x='frame_x', y='frame_y', fill=opt$target,
-                               label=opt$target)) + 
+    p1 = ggplot(df, aes_string(x='frame_x', y='frame_y', fill=opt$variable,
+                               label=opt$variable)) + 
         geom_tile(color='black') +
         geom_text(size=1) +
-        xlab('frame x') + ylab('frame y') +
+        xlab('frame x') + ylab('frame y') + ggtitle(opt$title) +
         scale_fill_gradientn(colors=hcl.colors(20, 'Temps'), na.value='white') +
         scale_x_discrete(breaks=c(1, seq(8, 96, 8))) +
         scale_y_discrete(breaks=c(1, seq(8, 24, 8))) + theme_bw() +
         guides(fill=guide_colourbar(barwidth=1, barheight=12))# +
         theme(text=element_text(size=18))
     }else{
-    p1 = ggplot(df, aes_string(x='frame_x', y='frame_y', fill=opt$target)) + 
+    p1 = ggplot(df, aes_string(x='frame_x', y='frame_y', fill=opt$variable)) + 
         geom_tile(color='black') + xlab('frame x') + ylab('frame y') +
+        ggtitle(opt$title) +
         scale_fill_gradientn(colors=hcl.colors(20, 'Temps'), na.value='white') +
         scale_x_discrete(breaks=c(1, seq(8, 96, 8))) +
         scale_y_discrete(breaks=c(1, seq(8, 24, 8))) + theme_bw() +

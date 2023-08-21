@@ -27,17 +27,17 @@ if __name__ == '__main__':
 
         with h5py.File(input_file, 'r') as f:
             all_images.append(f['images'][:])
-            all_masks.append(f['masks'][:])
+            # all_masks.append(f['masks'][:])
             all_channels.append(f['channels'][:])
             # channels.append(f.attrs['channels'])
         
         df = pd.read_hdf(input_file, mode='r', key='features')
-        df.insert(0, 'slide_id', slide_id)
+        #df.insert(0, 'slide_id', slide_id)
         all_features.append(df)
 
     # Concatenate the data
     images = np.concatenate(all_images, axis=0)
-    masks = np.concatenate(all_masks, axis=0)
+    # masks = np.concatenate(all_masks, axis=0)
     channels = all_channels[0]
     features = pd.concat(all_features, axis=0)
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         
     with h5py.File(args.output, 'w') as f:
         f.create_dataset('images', data=images)
-        f.create_dataset('masks', data=masks)
+        # f.create_dataset('masks', data=masks)
         f.create_dataset('channels', data=channels)
     
     features.reset_index(drop=True, inplace=True)

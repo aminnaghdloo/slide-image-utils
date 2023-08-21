@@ -13,16 +13,14 @@ import os
 import utils
 
 
-def process_frame(frame_info, params):
+def process_frame(frame, params):
     "Process frame to identify target LEVs"
      
     logger = utils.get_logger("process_frame", params['verbosity'])
-    (frame_id, paths) = frame_info
-    logger.info(f"Processing frame {frame_id}...")
+    logger.info(f"Processing frame {frame.frame_id}...")
 
     # loading frame image
-    frame = Frame(frame_id=frame_id, channels=params['channels'])
-    frame.readImage(paths=paths)
+    frame.readImage()
     image_copy = frame.image.copy()
     image_copy = image_copy.astype('float32')
 
@@ -43,16 +41,27 @@ def process_frame(frame_info, params):
     target_image = cv2.bilateralFilter(target_image.astype(np.float32),15,75,75)
     target_image = target_image.astype('uint16')
     th1 = np.percentile(target_image, params['low_thresh'])
-    ret, foreground = cv2.threshold(
+    ret1, foreground = cv2.threshold(
         target_image, th1, params['max_val'], cv2.THRESH_BINARY)
     foreground = (fill_hole(foreground) * params['max_val']).astype('uint16')
-    masked_image = target_image[foreground != 0]
+
+    # generating background cell masks and the corresponding masked image
+    bg_cell_mask = np.zeros(foreground.shape, dtype='uint8')
+    for channel in params['bg_cell_channels']:
+        bg_image = frame.image[..., frame.channels.index(channel)].copy()
+        ret, bg_mask = cv2.threshold(
+            bg_image, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        bg_mask = bg_mask.astype('uint8')
+        bg_cell_mask = cv2.bitwise_or(bg_cell_mask, bg_mask)
+    masked_image = target_image[bg_cell_mask != 0]
+    #masked_image = target_image[foreground != 0]
     th2 = params['high_thresh'] * np.median(masked_image)
-    ret, seeds = cv2.threshold(
+    ret2, seeds = cv2.threshold(
         target_image, th2, params['max_val'], cv2.THRESH_BINARY)
     opening_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
     seeds = cv2.morphologyEx(seeds,
                     cv2.MORPH_OPEN, opening_kernel)
+    seeds = cv2.bitwise_and(seeds, foreground) # added
     mask = morphology.reconstruction(seeds, foreground)
     mask = measure.label(mask)
     frame.mask = mask.astype('uint16')
@@ -83,13 +92,12 @@ def process_frame(frame_info, params):
     x = x.reindex(x.index.repeat(len(features))).reset_index(drop=True)
     features = pd.concat([features, x], axis=1)
 
-    logger.info(f"Finished processing frame {frame_id}")
+    logger.info(f"Finished processing frame {frame.frame_id}")
 
     return({'features':features, 'images':images, 'masks':masks})
 
 
 def main(args):
-    
     # inputs
     input       = args.input
     output      = args.output
@@ -111,9 +119,9 @@ def main(args):
     
     # parameters for process_frame function
     params = {
-        'channels': args.channels,
         'tophat_size': args.kernel,
         'channel_id': args.channels.index(args.target_channel),
+        'bg_cell_channels': args.bg_cell_channels,
         'max_val': args.max_val,
         'low_thresh': args.low,
         'high_thresh': args.high,
@@ -127,7 +135,7 @@ def main(args):
     }
 
     logger.info("Generating frame image paths...")
-    frames_info = []
+    frames = []
     for i in range(n_frames):
         frame_id = i + offset + 1
         if not include_edge and utils.is_edge(frame_id):
@@ -135,16 +143,20 @@ def main(args):
         paths = utils.generate_tile_paths(
             path=input, frame_id=frame_id, starts=starts,
             name_format=name_format)
-        frame_info = (frame_id, paths)
-        frames_info.append(frame_info)
+        frame = Frame(frame_id=frame_id, channels=args.channels,
+            paths=paths)
+        frames.append(frame)
     logger.info("Finished generating frame image paths.")
 
     logger.info("Processing the frames...")
     n_proc = n_threads if n_threads > 0 else mp.cpu_count()
     pool = mp.Pool(n_proc)
-    data = pool.map(partial(process_frame, params=params), frames_info)
+    data = pool.map(partial(process_frame, params=params), frames)
     logger.info("Finished processing the frames.")
     
+    pool.close()
+    pool.join()
+
     logger.info("Collecting features...")
     all_features = pd.concat([out['features'] for out in data],
                              ignore_index=True)
@@ -201,7 +213,6 @@ def main(args):
         all_features.to_hdf(output, mode='a', key='features')
 
     logger.info(f"Finished saving data.")
-    print(f"Extracted {len(all_features)} events.")
 
 
 if __name__ == '__main__':
@@ -233,6 +244,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '-c', '--channels', type=str, nargs='+',
         default=['DAPI', 'TRITC', 'CY5', 'FITC'], help="channel names")
+    
+    parser.add_argument(
+        '-C', '--bg_cell_channels', type=str, nargs='+',
+        default=['DAPI', 'CY5'],
+        help="name of channels for which background cells are positive")
 
     parser.add_argument(
         '-s', '--starts', type=int, nargs='+',
@@ -336,6 +352,12 @@ if __name__ == '__main__':
 
     if len(args.channels) != len(args.starts):
         logger.error(f"number of channels do not match with number of starts")
+
+    for item in args.bg_cell_channels:
+        if item not in args.channels:
+            logger.error(f"background cell channel {item} is not found among"
+                         f" image channels!")
+            sys.exit(-1)
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     

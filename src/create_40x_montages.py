@@ -42,9 +42,9 @@ def main(args):
     images = []
     index_to_drop = []
     for index, row in df.iterrows():
-        paths = [f"{input}/{row.cell_id}-{row.frame_id}-{row.x}-{row.y}-{c}.tif"
+        paths = [f"{input}/{int(row.cell_id)}-{int(row.frame_id)}-{int(row.x)}-{int(row.y)}-{c}.tif"
                 for c in channels]
-        
+        print(paths) 
         if not all([os.path.isfile(path) for path in paths]):
             index_to_drop.append(index)
             continue
@@ -57,7 +57,7 @@ def main(args):
                      (w // 2 - width // 2):(w // 2 + width // 2 + 1), :]
         images.append(crop)
         logger.info(f"Loaded image {index}")
-
+    
     # create montages
     images = np.stack(images, axis=0)
     images = utils.apply_gain(images, gain)

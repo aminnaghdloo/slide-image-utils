@@ -29,6 +29,7 @@ def main(args):
     if(len(filters) != 0):
         logger.info("Filtering events...")
         df = utils.filter_events(df, filters, verbosity)
+        df.reset_index(inplace=True, drop=True)
         logger.info("Finished filtering events.")
     
     if 'image_id' in df.columns:
@@ -44,10 +45,10 @@ def main(args):
     
     groups = df.groupby('frame_id')
     for frame_id, event_data in groups:
-        frame = Frame(frame_id, channels)
         paths = utils.generate_tile_paths(
             image_dir, frame_id, starts, name_format)
-        frame.readImage(paths)
+        frame = Frame(frame_id, channels, paths)
+        frame.readImage()
         if mask_flag:
             frame.readMask(mask_dir, name_format=name_format)
         images, masks = frame.extract_crops(event_data, width, mask_flag)

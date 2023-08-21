@@ -23,6 +23,7 @@ def segment_frame(frame, params):
     logger.info(f"Processing frame {frame.frame_id}...")
     
     # Preparing input
+    frame.readImage()
     image_copy = frame.image.copy()
     if len(image_copy.shape) == 2:
             image_copy = image_copy[..., np.newaxis]
@@ -169,10 +170,9 @@ def main(args):
         paths = utils.generate_tile_paths(
             path=in_path, frame_id=frame_id, starts=starts,
             name_format=name_format)
-        frame = Frame(frame_id=frame_id, channels=channels)
+        frame = Frame(frame_id=frame_id, channels=channels, paths=paths)
         if not include_edge and frame.is_edge():
             continue
-        frame.readImage(paths=paths)
         frames.append(frame)
     logger.info("Finished loading frame images.")
     
