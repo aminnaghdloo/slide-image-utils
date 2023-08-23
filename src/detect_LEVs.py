@@ -59,8 +59,8 @@ def process_frame(frame, params):
     ret2, seeds = cv2.threshold(
         target_image, th2, params['max_val'], cv2.THRESH_BINARY)
     opening_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    seeds = cv2.morphologyEx(seeds,
-                    cv2.MORPH_OPEN, opening_kernel)
+    #seeds = cv2.morphologyEx(seeds,
+    #                cv2.MORPH_OPEN, opening_kernel)
     seeds = cv2.bitwise_and(seeds, foreground) # added
     mask = morphology.reconstruction(seeds, foreground)
     mask = measure.label(mask)
