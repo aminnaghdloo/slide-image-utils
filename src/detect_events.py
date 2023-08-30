@@ -62,11 +62,12 @@ def segment_frame(frame, params):
             offset=params['thresh_offset'][i]
         )
         image_copy[..., i] = image_copy[..., i] > thresh_image
-        image_copy[..., i] = utils.fill_holes(
-            image_copy[..., i].astype('uint8'))
+        #image_copy[..., i] = utils.fill_holes(
+        #    image_copy[..., i].astype('uint8'))
         target_mask = cv2.bitwise_or(target_mask, image_copy[..., i])
     
     # Postprocessing the masks
+    target_mask = utils.fill_holes(target_mask.astype('uint8')
     target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, opening_kernel)
     target_dist = cv2.distanceTransform(
         target_mask.astype('uint8'), cv2.DIST_L2,3, cv2.CV_32F)
