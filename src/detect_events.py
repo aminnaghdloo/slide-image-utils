@@ -67,7 +67,7 @@ def segment_frame(frame, params):
         target_mask = cv2.bitwise_or(target_mask, image_copy[..., i])
     
     # Postprocessing the masks
-    target_mask = utils.fill_holes(target_mask.astype('uint8')
+    target_mask = utils.fill_holes(target_mask.astype('uint8'))
     target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, opening_kernel)
     target_dist = cv2.distanceTransform(
         target_mask.astype('uint8'), cv2.DIST_L2,3, cv2.CV_32F)
