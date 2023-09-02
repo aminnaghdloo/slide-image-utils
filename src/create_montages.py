@@ -10,15 +10,6 @@ import argparse
 import utils
 
 
-def channels2montage(images, b_index, g_index, r_index, order_index):
-    "Create montages from list of images."
-    bgr = utils.channels_to_bgr(images, b_index, g_index, r_index)
-    gray = np.concatenate([images[:,:,:,k] for k in order_index], axis=2)
-    gray = np.stack([gray] * 3, axis=3)
-    montages = np.concatenate([bgr, gray], axis=2)
-    return montages
-
-
 def main(args):
     
     # inputs
@@ -110,8 +101,8 @@ def main(args):
     g_index = [channels.index(channel) for channel in green]
     b_index = [channels.index(channel) for channel in blue]
     order_index = [channels.index(channel) for channel in order]
-    montages = channels2montage(images, b_index, g_index, r_index, order_index)
-    montages = (montages // 256).astype('uint8')
+    montages = utils.channels2montage(images, b_index, g_index, r_index,
+                                      order_index)
 
     if args.separate:
         output_path = f"{os.path.dirname(output)}/" \

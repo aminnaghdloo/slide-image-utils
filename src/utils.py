@@ -209,6 +209,16 @@ def channels_to_bgr(image, blue_index, green_index, red_index):
     return(bgr)
 
 
+def channels2montage(images, b_index, g_index, r_index, order_index):
+    "Create montages from list of images."
+    bgr = channels_to_bgr(images, b_index, g_index, r_index)
+    gray = np.concatenate([images[:,:,:,k] for k in order_index], axis=2)
+    gray = np.stack([gray] * 3, axis=3)
+    montages = np.concatenate([bgr, gray], axis=2)
+    montages = (montages // 256).astype('uint8')
+    return montages
+
+
 def calc_image_hist(image, mask=None, ch=None, bins=2**16, range=None,
                     density=False):
     "returns histogram of a single channel 2D image"

@@ -44,12 +44,23 @@ def process_frame(frame, params):
     ret1, foreground = cv2.threshold(
         target_image, th1, params['max_val'], cv2.THRESH_BINARY)
     foreground = (fill_hole(foreground) * params['max_val']).astype('uint16')
-    masked_image = target_image[foreground != 0]
+
+    # generating background cell masks and the corresponding masked image
+    bg_cell_mask = np.zeros(foreground.shape, dtype='uint8')
+    for channel in params['bg_cell_channels']:
+        bg_image = frame.image[..., frame.channels.index(channel)].copy()
+        ret, bg_mask = cv2.threshold(
+            bg_image, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        bg_mask = bg_mask.astype('uint8')
+        bg_cell_mask = cv2.bitwise_or(bg_cell_mask, bg_mask)
+    masked_image = target_image[bg_cell_mask != 0]
+    #masked_image = target_image[foreground != 0]
     th2 = params['high_thresh'] * np.median(masked_image)
     ret2, seeds = cv2.threshold(
         target_image, th2, params['max_val'], cv2.THRESH_BINARY)
     opening_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    seeds = cv2.morphologyEx(seeds, cv2.MORPH_OPEN, opening_kernel)
+    #seeds = cv2.morphologyEx(seeds,
+    #                cv2.MORPH_OPEN, opening_kernel)
     seeds = cv2.bitwise_and(seeds, foreground) # added
     mask = morphology.reconstruction(seeds, foreground)
     mask = measure.label(mask)
@@ -250,7 +261,7 @@ if __name__ == '__main__':
         help="low threshold for target channel segmentation [percentile]")
 
     parser.add_argument(
-        '-H', '--high', type=float, default=2,
+        '-H', '--high', type=float, default=5,
         help="high threshold for target channel segmentation [ratio-to-median]")
 
     parser.add_argument(
