@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
-from functools import partial
+from functools import partial, reduce
 from skimage import (
     feature, filters, measure, segmentation
 )
@@ -96,6 +96,17 @@ def segment_frame(frame, params):
 
     # Calculating basic features
     features = frame.calc_basic_features()
+
+    for ch in frame.channels:
+        temp = frame.calc_event_features(
+            func=utils.calc_percentiles,
+            channel=ch,
+            columns=['q05', 'q10', 'q25', 'q50', 'q75', 'q90', 'q95']
+        )
+        features=features.merge(temp, on=('frame_id', 'cell_id', 'y', 'x'))
+
+    print(features.columns)
+    print(features.head)
     images = None
     masks = None
 

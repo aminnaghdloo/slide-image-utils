@@ -306,3 +306,22 @@ def convert_dtype(image, dtype):
     image = image / scale
     image[image > np.iinfo(dtype).max] = np.iinfo(dtype).max
     return image.astype(dtype)
+
+
+def calc_percentiles(mask, image, percentiles=[5, 10, 25, 50, 75, 90, 95]):
+    """
+    Calculate specified percentiles of pixel values within a masked image.
+
+    Parameters:
+    - image: NumPy array representing the image.
+    - mask: NumPy boolean array representing the mask. True values indicate 
+            regions to consider.
+    - percentiles: List of percentiles to calculate.
+
+    Returns:
+    - Dictionary where keys are percentiles.
+    """
+    # Apply the mask to the image
+    percentile_values = np.percentile(image[mask.astype(bool)], percentiles)
+
+    return percentile_values

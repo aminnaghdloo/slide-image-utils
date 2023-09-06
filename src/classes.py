@@ -134,7 +134,7 @@ class Frame:
             props.insert(0, 'frame_id', self.frame_id)
         return(props)
 
-    def calc_event_features(self, func, channel, prefix):
+    def calc_event_features(self, func, channel, columns):
         "Extract desired features of events from frame image."
         if self.image is None:
             logger.error("frame image is not loaded!")
@@ -144,14 +144,13 @@ class Frame:
             sys.exit(-1)
         else:
             props = measure.regionprops_table(
-                self.mask, self.image[..., self.get_ch(channel)],
-                properties=('label', 'centroid','area'),
-                extra_properties=[func]
-            )
+                        self.mask,
+                        self.image[..., self.get_ch(channel)],
+                        properties=('label', 'centroid'),
+                        extra_properties=[func])
             props = pd.DataFrame(props)
-            colnames = ['cell_id', 'y', 'x', 'area']
-            n_extra = len(props.axes[1]) - len(colnames)
-            colnames.extend([prefix + '_' + str(i+1) for i in range(n_extra)])
+            colnames = ['cell_id', 'y', 'x']
+            colnames.extend([channel + '_' + c for c in columns])
             props.set_axis(colnames, axis=1, inplace=True)
             props = props.astype({'cell_id': int})
             props.insert(0, 'frame_id', self.frame_id)
