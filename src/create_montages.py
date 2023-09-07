@@ -94,7 +94,9 @@ def main(args):
     if width < images.shape[1]:
         gap = (images.shape[1] - width) // 2
         images = images[:, gap:(width + gap), gap:(width + gap), :]
-
+    
+    # apply gains
+    images = utils.apply_gain(images, args.gain)
     # create montages
     logger.info("Creating the montages...")
     r_index = [channels.index(channel) for channel in red]
@@ -158,6 +160,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '-B', '--blue', nargs='+', default=[],
         help="channel(s) to be shown in blue color")
+
+    parser.add_argument(
+        '-g', '--gain', nargs='+', type=float, default=[1,1,1,1],
+        help="gains applied to each channel")
 
     parser.add_argument(
         '-O', '--order', nargs='+', default=['DAPI', 'TRITC', 'FITC', 'CY5'],
