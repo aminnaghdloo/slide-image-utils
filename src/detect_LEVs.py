@@ -274,7 +274,7 @@ if __name__ == '__main__':
         help="extract images of detected events and output hdf5 file")
     
     parser.add_argument(
-        '-w', '--width', type=int, default=35,
+        '-w', '--width', type=int, default=45,
         help="""
         size of the event images to be cropped from slide images (odd).
         Works only when --extract_images is set.
