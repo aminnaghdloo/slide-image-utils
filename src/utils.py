@@ -139,6 +139,8 @@ def filter_events(features, filters, verbosity):
             sel['index'] = sel['index'] &\
                 (features[f_name] >= f_min) &\
                 (features[f_name] < f_max)
+            if sum(sel['index'].astype(int)) == 0:
+                quit('Nothing remained after filtering!')
 
     features = features[sel['index']]
     logger.info(f"Filtered {n} events down to {len(features)} events")
@@ -203,14 +205,16 @@ def channels_to_bgr(image, blue_index, green_index, red_index):
     bgr[bgr > max_val] = max_val
     bgr = bgr.astype(image.dtype)
 
-    if len(bgr) == 1:
-        bgr = bgr[0, ...]
+    # commented the following to debug montage generation for single events
+    #if len(bgr) == 1:
+    #    bgr = bgr[0, ...]
 
     return(bgr)
 
 
 def channels2montage(images, b_index, g_index, r_index, order_index):
     "Create montages from list of images."
+    
     bgr = channels_to_bgr(images, b_index, g_index, r_index)
     gray = np.concatenate([images[:,:,:,k] for k in order_index], axis=2)
     gray = np.stack([gray] * 3, axis=3)
