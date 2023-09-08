@@ -105,8 +105,6 @@ def segment_frame(frame, params):
         )
         features=features.merge(temp, on=('frame_id', 'cell_id', 'y', 'x'))
 
-    print(features.columns)
-    print(features.head)
     images = None
     masks = None
 
