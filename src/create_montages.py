@@ -110,9 +110,9 @@ def main(args):
         output_path = f"{os.path.dirname(output)}/" \
                       f"{os.path.basename(output).split('.')[0]}"
         os.makedirs(output_path, exist_ok=True)
-
+    # int(row.cell_id)
         for i, row in df.iterrows():
-            temp_path = f"{output_path}/{int(row.cell_id)}-" \
+            temp_path = f"{output_path}/" \
                         f"{int(row.frame_id)}-{int(row.x)}-{int(row.y)}.jpg"
             cv2.imwrite(temp_path, montages[i])
             logger.info(f"Created {temp_path}")
@@ -166,7 +166,7 @@ if __name__ == '__main__':
         help="gains applied to each channel")
 
     parser.add_argument(
-        '-O', '--order', nargs='+', default=['DAPI', 'TRITC', 'FITC', 'CY5'],
+        '-O', '--order', nargs='*', default=['DAPI', 'TRITC', 'FITC', 'CY5'],
         help="order of channels in grayscale section of the montage")
 
     parser.add_argument(

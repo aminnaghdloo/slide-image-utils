@@ -1,4 +1,22 @@
-source('~/Dropbox/code/CellRecogFunctions.R')
+#2020-04-27
+library("RPostgreSQL")
+library("stringr")
+hostname = "csi-db.usc.edu" # 4db.usc.edu
+portnumber = "5432"
+databasename = "test_msg"
+username = "reader"
+pwd = "Meta$ta$i$20!7"
+
+ocular_db_query <- function(query){
+  drv <- dbDriver("PostgreSQL")
+  con <- dbConnect(drv, host=hostname, port=portnumber, dbname=databasename, 
+                   user=username, password=pwd)
+  results <- dbSendQuery(con, query )
+  analysis_table <- fetch(results, n=-1)
+  dbDisconnect(con)
+  dbUnloadDriver(drv)
+  return(analysis_table)
+}
 
 args = commandArgs(trailingOnly=TRUE)
 df1 = read.table(args[1], header=TRUE, sep='\t')

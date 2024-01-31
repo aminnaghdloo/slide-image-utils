@@ -5,10 +5,12 @@ import h5py
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Merge HDF5 files')
-    parser.add_argument('-i', '--input', type=str, nargs='+',
+    parser.add_argument('-i', '--input', type=str, nargs='+', required=True,
                         help='Input HDF5 files')
-    parser.add_argument('-o', '--output', type=str, help='Output HDF5 file')
-    parser.add_argument('-v', '--verbose', action='store_true',help='Verbose mode')
+    parser.add_argument('-o', '--output', type=str, help='Output HDF5 file',
+                        required=True)
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Verbose mode')
 
     args = parser.parse_args()
 
@@ -28,17 +30,20 @@ if __name__ == '__main__':
         with h5py.File(input_file, 'r') as f:
             all_images.append(f['images'][:])
             # all_masks.append(f['masks'][:])
-            all_channels.append(f['channels'][:])
+            channels = f['channels'][:]
+            # assert len(channels) == 5
+            # all_channels.append(channels)
             # channels.append(f.attrs['channels'])
         
         df = pd.read_hdf(input_file, mode='r', key='features')
-        #df.insert(0, 'slide_id', slide_id)
+        if 'slide_id' not in df.columns:
+            df.insert(0, 'slide_id', slide_id)
         all_features.append(df)
 
     # Concatenate the data
     images = np.concatenate(all_images, axis=0)
     # masks = np.concatenate(all_masks, axis=0)
-    channels = all_channels[0]
+    # channels = all_channels[0]
     features = pd.concat(all_features, axis=0)
 
     # Write out the data

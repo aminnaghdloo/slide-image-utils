@@ -44,7 +44,6 @@ class Frame:
                         images[i][images[i] > 65535] = 65535
                         images[i] = images[i].astype('uint16')
             ### end of reading compressed images
-
             self.image = cv2.merge(images)
 
     def readMask(self, mask_dir, name_format="Tile%06d.tif"):
@@ -55,15 +54,17 @@ class Frame:
         else:
             self.mask = cv2.imread(mask_path, -1)
 
-    def writeMask(self, mask_dir, name_format="Tile%06d.tif"):
-        if self.mask is None:
+    def writeMask(self, mask_dir, name_format="Tile%06d.tif",
+                  in_mask=None):
+        mask = self.mask if in_mask is None else in_mask
+        if mask is None:
             logger.error(f"frame mask is not loaded!")
             sys.exit(-1)
         else:
             os.makedirs(mask_dir, exist_ok=True)
             cv2.imwrite(
                 f"{mask_dir}/{name_format}" % self.frame_id,
-                self.mask
+                mask
             )
     
     def is_edge(self):
@@ -84,17 +85,18 @@ class Frame:
         else:
             return(self.channels.index(ch))
 
-    def calc_basic_features(self):
+    def calc_basic_features(self, in_mask=None):
         "Extract basic features of events from frame image."
+        mask = self.mask if in_mask is None else in_mask
         if self.image is None:
             logger.error("frame image is not loaded!")
             sys.exit(-1)
-        elif self.mask is None:
+        elif mask is None:
             logger.error("frame mask is not loaded!")
             sys.exit(-1)
         else:
             props = measure.regionprops_table(
-                self.mask, self.image, separator='_',
+                mask, self.image, separator='_',
                 properties=[
                     'label', 'centroid', 'area', 'eccentricity',
                     'intensity_mean']

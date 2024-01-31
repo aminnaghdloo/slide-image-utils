@@ -216,9 +216,12 @@ def channels2montage(images, b_index, g_index, r_index, order_index):
     "Create montages from list of images."
     
     bgr = channels_to_bgr(images, b_index, g_index, r_index)
-    gray = np.concatenate([images[:,:,:,k] for k in order_index], axis=2)
-    gray = np.stack([gray] * 3, axis=3)
-    montages = np.concatenate([bgr, gray], axis=2)
+    if order_index:
+        gray = np.concatenate([images[:,:,:,k] for k in order_index], axis=2)
+        gray = np.stack([gray] * 3, axis=3)
+        montages = np.concatenate([bgr, gray], axis=2)
+    else:
+        montages = bgr
     montages = (montages // 256).astype('uint8')
     return montages
 
