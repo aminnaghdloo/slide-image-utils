@@ -247,10 +247,9 @@ def main(args):
     all_features.reset_index(drop=True, inplace=True)
 
     logger.info("Saving data...")
-    if not args.extract_images:
-            #all_features.round(decimals=3).to_csv(output, sep='\t', index=False)
-        all_features.to_csv(output, sep='\t', index=False)
-    else:
+    all_features.round(decimals=3).to_csv(output, sep='\t', index=False)
+    
+    if args.extract_images:
         output = output.replace('.txt', '.hdf5')
         with h5py.File(output, 'w') as hf:
             hf.create_dataset('images', data=all_images)
