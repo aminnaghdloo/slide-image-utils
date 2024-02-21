@@ -10,25 +10,22 @@ import sys
 import os
 
 
-def process_frame(frame_info, params):
+def process_frame(frame, params):
     "Calculates event histograms per frame to help with parallelization."
     logger = utils.get_logger("process frame", params['verbosity'])
-
-    # function to extract events histogram
-    calc_hist = utils.wrapped_partial(
-        utils.calc_image_hist,
-
-    logger.info(f"Processing frame {frame_id}...")
+    
     frame.readImage()
+
+    logger.info(f"Processing frame {frame.frame_id}...")
     hist = utils.calc_image_hist(
         image=frame.image,
         bins=params['bins'], range=tuple(params['range']),
         density=params['density']
     )
  
-    logger.info(f"Finished processing frame {frame_id}")
+    logger.info(f"Finished processing frame {frame.frame_id}")
 
-    return(features)
+    return(hist)
 
 
 def main(args):
@@ -88,7 +85,7 @@ def main(args):
     
     logger.info("Saving histograms...")
     df = pd.DataFrame(final_hist.transpose())
-    df.rename(columns=dict(zip(df.columns, channels), inplace=True)
+    df.rename(columns=dict(zip(df.columns, channels)), inplace=True)
     df.to_csv(output, sep='\t', index=False)
     logger.info("Finished saving histograms.")
 
@@ -150,25 +147,6 @@ if __name__ == '__main__':
     parser.add_argument(
         '--include_edge_frames', default=False, action = 'store_true',
         help="include frames that are on the edge of slide")
-
-    parser.add_argument(
-        '--filter', type=str, nargs=3, action='append',
-        default=[],
-        help="""
-        feature range for filtering detected events.
-
-        Usage:      <command> --feature_range <feature> <min> <max>
-        Example:    <command> --feature_range DAPI_mean 0 10000
-
-        Acceptable thresholds are listed in the following table:
-
-        feature         minimum     maximum
-        -------         -------     -------
-        area            0           +inf
-        eccentricity    0           1
-        <channel>_mean  0           <MAX_VAL>
-        """
-    )
 
     args = parser.parse_args()
     logger = utils.get_logger("parse_args", args.verbose)

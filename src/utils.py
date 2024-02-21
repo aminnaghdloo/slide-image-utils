@@ -234,8 +234,7 @@ def calc_image_hist(image, bins=2**16, range=[0, 2**16-1], density=False):
         hist, _ = np.histogram(
             channel, bins=bins, range=range, density=density)
         histograms.append(hist)
-
-    return(np.array(histograms))
+    return(np.array(histograms, dtype='uint64'))
 
 
 def calc_event_hist(mask, image, bins=2**16, range=None, density=False):
