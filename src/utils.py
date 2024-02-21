@@ -246,10 +246,14 @@ def calc_image_hist(image, mask=None, ch=None, bins=2**16, range=None,
 
 
 def calc_event_hist(mask, image, bins=2**16, range=None, density=False):
-    "returns histogram of a single channel 2D image using a given mask"
-    assert image.shape == mask.shape
-    hist, _ = np.histogram(
-        image[mask.astype(bool)], bins=bins, range=range, density=density)
+    "returns histogram of a single channel 2D image with applicable mask"
+    if mask is None:
+        hist, _ = np.histogram(
+            image, bins=bins, range=range, density=density)
+    else:
+        assert image.shape == mask.shape
+        hist, _ = np.histogram(
+            image[mask.astype(bool)], bins=bins, range=range, density=density)
 
     return(hist)
 
