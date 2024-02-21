@@ -226,34 +226,23 @@ def channels2montage(images, b_index, g_index, r_index, order_index):
     return montages
 
 
-def calc_image_hist(image, mask=None, ch=None, bins=2**16, range=None,
-                    density=False):
-    "returns histogram of a single channel 2D image"
-    if ch is None and len(image.shape) > 2:
-        sys.exit(f"{image.shape[-1]}-channel image: Specify channel input 'ch'")
-    else:
-        image = image[..., ch] if len(image.shape) > 2 else image
-        if mask is None:
-            hist, _ = np.histogram(
-                image, bins=bins, range=range, density=density)
-        else:
-            assert image.shape == mask.shape
-            hist, _ = np.histogram(
-                image[mask.astype(bool)], bins=bins, range=range,
-                density=density)
+def calc_image_hist(image, bins=2**16, range=[0, 2**16-1], density=False):
+    "returns histogram of a single/multi-channel 2D image"
+    
+    histograms = []
+    for channel in cv2.split(image):
+        hist, _ = np.histogram(
+            channel, bins=bins, range=range, density=density)
+        histograms.append(hist)
 
-        return(hist)
+    return(np.array(histograms))
 
 
 def calc_event_hist(mask, image, bins=2**16, range=None, density=False):
     "returns histogram of a single channel 2D image with applicable mask"
-    if mask is None:
-        hist, _ = np.histogram(
-            image, bins=bins, range=range, density=density)
-    else:
-        assert image.shape == mask.shape
-        hist, _ = np.histogram(
-            image[mask.astype(bool)], bins=bins, range=range, density=density)
+    assert image.shape == mask.shape
+    hist, _ = np.histogram(
+        image[mask.astype(bool)], bins=bins, range=range, density=density)
 
     return(hist)
 
