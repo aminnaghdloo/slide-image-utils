@@ -25,7 +25,7 @@ if __name__=='__main__':
         df = pd.read_table(input_path)
         df.x = df.x.astype('int')
         df.y = df.y.astype('int')
-        df['label'] = df.area.astype('int')
+        df['label'] = df.label.astype('int')
         df['forty_x'] = None
         df['picked'] = None
         df['scope'] = None
