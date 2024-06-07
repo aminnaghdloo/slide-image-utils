@@ -1,11 +1,12 @@
 Metadata-Version: 2.1
 Name: slide-image-utils
-Version: 1.0.1.dev2+gf82bad0.d20240606
+Version: 1.1.2.dev0+g5064eda.d20240607
 Summary: A package for processing single cell IF microscopy image data
 Author-email: Amin Naghdloo <naghdloo@usc.edu>
 Project-URL: Repository, https://github.com/aminnaghdloo/slide-image-utils.git
 Classifier: License :: OSI Approved :: MIT License
-Classifier: Private :: Do Not Upload
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 Requires-Dist: h5py==3.11.0

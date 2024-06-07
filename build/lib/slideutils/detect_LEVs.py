@@ -1,7 +1,8 @@
 from skimage import segmentation, measure, morphology
 from scipy.ndimage import binary_fill_holes as fill_hole
 from functools import partial
-from utils.frame import Frame
+from slideutils.utils.frame import Frame
+from slideutils.utils import utils
 import pandas as pd
 import numpy as np
 import multiprocessing as mp
@@ -10,7 +11,6 @@ import h5py
 import argparse
 import sys
 import os
-from utils import utils
 
 
 def process_frame(frame, params):

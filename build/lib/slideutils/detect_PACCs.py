@@ -12,8 +12,8 @@ from skimage import (
 	feature, filters, measure, segmentation
 )
 
-from utils import utils
-from utils.frame import Frame
+from slideutils.utils import utils
+from slideutils.utils.frame import Frame
 
 
 def segment_frame(frame, params):
@@ -39,7 +39,7 @@ def segment_frame(frame, params):
 	
 	# Preprocessing and segmenting channels separately
 	target_mask = np.zeros(image_copy.shape[:2], dtype=image_copy.dtype)
-	for ch in params['mask_ch']: #frame.channels:
+	for ch in params['mask_ch']:
 		i = frame.get_ch(ch)
 		
 		if params['tophat_size'] != 0:
@@ -68,9 +68,6 @@ def segment_frame(frame, params):
 	
 	# Postprocessing the masks
 	target_mask = utils.fill_holes(target_mask.astype('uint8'))
-	#target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, opening_kernel)
-	#target_dist = cv2.distanceTransform(
-	#	target_mask.astype('uint8'), cv2.DIST_L2,3, cv2.CV_32F)
 	
 	# Generating the masks
 	nucleus_mask = image_copy[..., frame.get_ch(params['nucleus_ch'])]
@@ -78,22 +75,6 @@ def segment_frame(frame, params):
 	nucleus_mask = np.multiply(nucleus_mask, event_mask)
 	nucleus_mask = nucleus_mask.astype('uint16')
 	frame.mask = event_mask.astype('uint16')
-	#seed_mask = cv2.morphologyEx(
-	#	image_copy[..., frame.get_ch(params['seed_ch'])],
-	#	cv2.MORPH_OPEN, opening_kernel
-	#)
-	#seed_dist = cv2.distanceTransform(
-	#	seed_mask.astype('uint8'), cv2.DIST_L2, 3, cv2.CV_32F)
-	#local_max_coords = feature.peak_local_max(
-	#	seed_dist, min_distance=params['min_dist'],
-	#	exclude_border=params['exclude_border'])
-	#seeds = np.zeros(seed_mask.shape, dtype=bool)
-	#seeds[tuple(local_max_coords.T)] = True
-	#seeds = measure.label(seeds)
-
-	# Watershed segmentation
-	#event_mask = segmentation.watershed(-target_dist, seeds, mask=target_mask)
-	#frame.mask = event_mask.astype('uint16')
 
 	# Saving the mask
 	if params['mask_path'] is not None:
@@ -131,12 +112,6 @@ def segment_frame(frame, params):
 	if params['extract_img']:
 		images, masks = frame.extract_crops(features, params['width'],
 											mask_flag=params['mask_flag'])
-		
-	# extracting background mean intensities:
-	# x = utils.calc_bg_intensity(frame)
-	# x = x.reindex(x.index.repeat(len(features))).reset_index(drop=True)
-	# features = pd.concat([features, x], axis=1)
-
 	
 	logger.info(f"Finished processing frame {frame.frame_id}")
 	

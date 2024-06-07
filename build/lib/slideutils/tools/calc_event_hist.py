@@ -1,11 +1,11 @@
-from classes import Frame
+from slideutils.utils.frame import Frame
+from slideutils.utils import utils
 from functools import partial, update_wrapper
 from skimage import measure
 import multiprocessing as mp
 import pandas as pd
 import numpy as np
 import argparse
-import utils
 import sys
 import os
 
@@ -37,7 +37,7 @@ def process_frame(frame_info, params):
 	return(features)
 
 
-def main(args):
+def process_frames(args):
 	
 	# inputs
 	image_dir	= args.image
@@ -99,8 +99,7 @@ def main(args):
 	logger.info("Finished saving features.")
 
 
-if __name__ == '__main__':
-
+def main():
 	parser = argparse.ArgumentParser(
 		description="Extract event images from coordinate data",
 		formatter_class=argparse.RawTextHelpFormatter)
@@ -213,6 +212,10 @@ if __name__ == '__main__':
 	logger.info(f"mask directory:	{args.mask}")
 	logger.info(f"output file:		{args.output}")
 
-	main(args)
+	process_frames(args)
 
 	logger.info("Program finished successfully!")
+
+
+if __name__ == '__main__':
+	main()

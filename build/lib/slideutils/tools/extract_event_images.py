@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
 import argparse
-from utils.frame import Frame
-from utils import utils
+from slideutils.utils.frame import Frame
+from slideutils.utils import utils
 import h5py
 import os
 
 
-def main(args):
+def extract_event_crops(args):
 	
 	# inputs
 	image_dir	= args.image
@@ -72,8 +72,7 @@ def main(args):
 	logger.info('Finished saving extracted images!')
 
 
-if __name__ == '__main__':
-
+def main():
 	parser = argparse.ArgumentParser(
 		description="Extract event images from coordinate data",
 		formatter_class=argparse.RawTextHelpFormatter)
@@ -151,6 +150,10 @@ if __name__ == '__main__':
 	logger.info(f"input data file:  {args.data}")
 	logger.info(f"output file:	  {args.output}")
 
-	main(args)
+	extract_event_crops(args)
 
 	logger.info("Program finished successfully!")
+
+
+if __name__ == '__main__':
+	main()

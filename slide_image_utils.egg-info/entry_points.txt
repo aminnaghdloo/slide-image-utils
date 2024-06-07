@@ -1,2 +1,15 @@
 [console_scripts]
+create_40x_montages = slideutils.vis.create_40x_montages:main
+create_gallery = slideutils.vis.create_gallery:main
+create_montages = slideutils.vis.create_montages:main
+detect_LEVs = slideutils.detect_LEVs:main
+detect_PACCs = slideutils.detect_PACCs:main
 detect_cells = slideutils.detect_cells:main
+extract_closest_events = slideutils.tools.extract_closest_events:main
+extract_event_images = slideutils.tools.extract_event_images:main
+extract_hdf_features = slideutils.tools.extract_hdf_features:main
+extract_more_features = slideutils.tools.extract_morphs:main
+filter_hdf = slideutils.tools.hdf_tools.filter_hdf:main
+merge_hdf = slideutils.tools.hdf_tools.merge_hdf:main
+query_40x_montages = slideutils.tools.query_40x_images:main
+sort_hdf = slideutils.tools.hdf_tools.sort_hdf:main

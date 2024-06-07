@@ -22,22 +22,25 @@ dependencies = [
 ]
 classifiers = [
 	"License :: OSI Approved :: MIT License",
-	"Private :: Do Not Upload"
+	"Operating System :: OS Independent",
+	"Programming Language :: Python :: 3"
 ]
 
 [project.scripts]
-detect_cells = "slideutils.detect_cells:main"
-detect_LEVs = "slideutils.detect_LEVs:main"
-detect_PACCs = "slideutils.detect_PACCs:main"
-create_gallery = "slideutils.tools.create_gallery:main"
-extract_event_images = "slideutils.tools.extract_event_images:main"
-extract_more_features = "slideutils.tools.extract_morphs:main"
-extract_hdf_features = "slideutils.tools.extract_hdf_features:main"
-extract_closest_events = "slideutils.tools.extract_closest_events:main"
-query_40x_montages = "slideutils.tools.query_40x_images:main"
-filter_hdf = "slideutils.tools.hdf_tools.filter_hdf:main"
-merge_hdf = "slideutils.tools.hdf_tools.merge_hdf:main"
-sort_hdf = "slideutils.tools.hdf_tools.sort_hdf:main"
+siu_detect_cells = "slideutils.detect_cells:main"
+siu_detect_LEVs = "slideutils.detect_LEVs:main"
+siu_detect_PACCs = "slideutils.detect_PACCs:main"
+siu_extract_event_images = "slideutils.tools.extract_event_images:main"
+siu_extract_more_features = "slideutils.tools.extract_morphs:main"
+siu_extract_hdf_features = "slideutils.tools.extract_hdf_features:main"
+siu_extract_closest_events = "slideutils.tools.extract_closest_events:main"
+siu_query_40x_montages = "slideutils.tools.query_40x_images:main"
+siu_filter_hdf = "slideutils.tools.hdf_tools.filter_hdf:main"
+siu_merge_hdf = "slideutils.tools.hdf_tools.merge_hdf:main"
+siu_sort_hdf = "slideutils.tools.hdf_tools.sort_hdf:main"
+siu_create_gallery = "slideutils.vis.create_gallery:main"
+siu_create_montages = "slideutils.vis.create_montages:main"
+siu_create_40x_montages = "slideutils.vis.create_40x_montages:main"
 
 [project.urls]
 Repository = "https://github.com/aminnaghdloo/slide-image-utils.git"
