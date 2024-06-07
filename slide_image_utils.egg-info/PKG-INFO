@@ -1,0 +1,42 @@
+Metadata-Version: 2.1
+Name: slide-image-utils
+Version: 1.0.1.dev2+gf82bad0.d20240606
+Summary: A package for processing single cell IF microscopy image data
+Author-email: Amin Naghdloo <naghdloo@usc.edu>
+Project-URL: Repository, https://github.com/aminnaghdloo/slide-image-utils.git
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Private :: Do Not Upload
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: h5py==3.11.0
+Requires-Dist: opencv-python==4.5.3.56
+Requires-Dist: scikit-image==0.19.1
+Requires-Dist: numpy==1.21.4
+Requires-Dist: pandas==1.3.5
+Requires-Dist: scipy==1.7.3
+Requires-Dist: matplotlib==3.5.1
+
+# slide-image-utils
+This package provides a suite of programs to analyze and manipulate whole slide
+microscopy image data at a single cell level.
+
+
+## Setup
+
+Requirements:
+- OpenCV (4.5.3)
+- Numpy (1.21.4)
+- Pandas (1.3.5)
+- Matplotlib (3.5.1)
+- scikit-image (0.19.1)
+
+You can install the conda environment directly from `requirements.yml` file:
+```
+python env create --file requirements.yml
+```
+
+## Tools
+
+- `detect_cells.py`: 
+- `detect_LEVs.py`:
+- `detect_PACCs.py`: 

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slide-image-utils"
+description = "A package for processing single cell IF microscopy image data"
+authors = [
+	{name = "Amin Naghdloo", email = "naghdloo@usc.edu"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dynamic = ["version"]
+dependencies = [
+	"h5py == 3.11.0",
+	"opencv-python == 4.5.3.56",
+	"scikit-image == 0.19.1",
+	"numpy == 1.21.4",
+	"pandas == 1.3.5",
+	"scipy == 1.7.3",
+	"matplotlib == 3.5.1"
+]
+classifiers = [
+	"License :: OSI Approved :: MIT License",
+	"Private :: Do Not Upload"
+]
+
+[project.scripts]
+detect_cells = "slideutils.detect_cells:main"
+detect_LEVs = "slideutils.detect_LEVs:main"
+detect_PACCs = "slideutils.detect_PACCs:main"
+create_gallery = "slideutils.tools.create_gallery:main"
+extract_event_images = "slideutils.tools.extract_event_images:main"
+extract_more_features = "slideutils.tools.extract_morphs:main"
+extract_hdf_features = "slideutils.tools.extract_hdf_features:main"
+extract_closest_events = "slideutils.tools.extract_closest_events:main"
+query_40x_montages = "slideutils.tools.query_40x_images:main"
+filter_hdf = "slideutils.tools.hdf_tools.filter_hdf:main"
+merge_hdf = "slideutils.tools.hdf_tools.merge_hdf:main"
+sort_hdf = "slideutils.tools.hdf_tools.sort_hdf:main"
+
+[project.urls]
+Repository = "https://github.com/aminnaghdloo/slide-image-utils.git"
+
+[tool.setuptools_scm]
