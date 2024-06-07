@@ -45,4 +45,10 @@ siu_create_40x_montages = "slideutils.vis.create_40x_montages:main"
 [project.urls]
 Repository = "https://github.com/aminnaghdloo/slide-image-utils.git"
 
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "slideutils/dev", "slideutils/script"]
+
 [tool.setuptools_scm]
