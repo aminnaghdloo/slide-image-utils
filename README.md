@@ -18,4 +18,4 @@ pip install slide-image-utils
 For detailed information on how to use this package, please refer to the
 [documentation][doc].
 
-[doc]: https://github.com/aminnaghdloo/slide-image-utils/doc/doc.md
+[doc]: ./doc/doc.md
