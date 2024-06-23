@@ -1,0 +1,64 @@
+site_name: slide-image-utils
+site_url: https://aminnaghdloo.github.io/slide-image-utils-tutorial/
+nav:
+  - Overview: index.md
+  - Detection Tools: detection.md
+  - Postprocessing Tools: postproc.md
+  - Visualization Tools: vis.md
+theme:
+  name: material #readthedocs
+  features:
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: default 
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+      primary: indigo
+
+    - media: "(prefers-color-scheme: light)"
+      scheme: slate
+      toggle:
+        icon: material/toggle-switch-off-outline 
+        name: Switch to dark mode
+      primary: indigo
+
+
+plugins:
+  - social
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/aminnaghdloo
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/AminN6651
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/aminnaghdloo/
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.mark
+  - attr_list
+
+copyright: |
+  &copy; 2024 <a href="https://github.com/aminnaghdloo"  target="_blank" rel="noopener">Amin Naghdloo</a>
