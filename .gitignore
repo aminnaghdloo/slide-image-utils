@@ -1,2 +1,7 @@
+.gitignore
+.cache/
 build/
 slide-image-utils.egg-info/
+__pycache__
+*/*.pyc
+
