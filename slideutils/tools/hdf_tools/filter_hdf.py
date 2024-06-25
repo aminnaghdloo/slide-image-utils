@@ -13,6 +13,8 @@ def filter_hdf(args):
     with h5py.File(input_file, "r") as f:
         images = f["images"][:]
         channels = f["channels"][:]
+        if args.mask_flag:
+            masks = f["masks"][:]
 
     features = pd.read_hdf(input_file, mode="r", key="features")
 
@@ -25,7 +27,7 @@ def filter_hdf(args):
         f_min = float(filter[1])
         f_max = float(filter[2])
         if f_name not in features.columns:
-            logger.warning(f"Cannot filter on {f_name}: Feature not found!")
+            print(f"Cannot filter on {f_name}: Feature not found!")
             continue
         else:
             sel["index"] = (
@@ -38,11 +40,15 @@ def filter_hdf(args):
 
     features = features[sel["index"]]
     images = images[sel["index"]]
+    if args.mask_flag:
+        masks = masks[sel["index"]]
 
     # Write the output
     with h5py.File(output_file, "w") as f:
         f.create_dataset("images", data=images)
         f.create_dataset("channels", data=channels)
+        if args.mask_flag:
+           f.create_dataset("masks", data=masks)
 
     features.reset_index(drop=True, inplace=True)
     features.to_hdf(output_file, key="features", mode="a")
@@ -59,25 +65,32 @@ def main():
         "-o", "--output", type=str, required=True, help="Output HDF5 file"
     )
     parser.add_argument(
+        "-m",
+        "--mask_flag",
+        action="store_true",
+        default=False,
+        help="include the masks as well",
+    )
+    parser.add_argument(
         "--filter",
         type=str,
         nargs=3,
         action="append",
         default=[],
         help="""
-		feature range for filtering detected events.
+        feature range for filtering detected events.
 
-		Usage:	  <command> --feature_range <feature> <min> <max>
-		Example:	<command> --feature_range DAPI_mean 0 10000
+        Usage:      <command> --feature_range <feature> <min> <max>
+        Example:    <command> --feature_range DAPI_mean 0 10000
 
-		Acceptable thresholds are listed in the following table:
+        Acceptable thresholds are listed in the following table:
 
-		feature		 minimum	 maximum
-		-------		 -------	 -------
-		area			0		   +inf
-		eccentricity	0		   1
-		<channel>_mean  0		   <MAX_VAL>
-		""",
+        feature         minimum     maximum
+        -------         -------     -------
+        area            0           +inf
+        eccentricity    0           1
+        <channel>_mean  0           <MAX_VAL>
+        """
     )
 
     args = parser.parse_args()
