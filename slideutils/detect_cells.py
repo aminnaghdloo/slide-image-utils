@@ -32,9 +32,10 @@ def segment_frame(frame, params):
             cv2.MORPH_ELLIPSE, (params["tophat_size"], params["tophat_size"])
         )
 
-    opening_kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (params["opening_size"], params["opening_size"])
-    )
+    if params["opening_size"] != 0:
+        opening_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (params["opening_size"], params["opening_size"])
+        )
 
     # Preprocessing and segmenting channels separately
     target_mask = np.zeros(image_copy.shape[:2], dtype=image_copy.dtype)
@@ -46,11 +47,12 @@ def segment_frame(frame, params):
                 image_copy[..., i], cv2.MORPH_TOPHAT, tophat_kernel
             )
 
-        image_copy[..., i] = cv2.GaussianBlur(
-            image_copy[..., i],
-            (params["blur_size"], params["blur_size"]),
-            params["blur_sigma"],
-        )
+        if params["blur_size"] != 0:
+            image_copy[..., i] = cv2.GaussianBlur(
+                image_copy[..., i],
+                (params["blur_size"], params["blur_size"]),
+                params["blur_sigma"],
+            )
 
         thresh_image = filters.threshold_local(
             image=image_copy[..., i],
@@ -63,17 +65,21 @@ def segment_frame(frame, params):
 
     # Postprocessing the masks
     target_mask = utils.fill_holes(target_mask.astype("uint8"))
-    target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, opening_kernel)
+    if params["opening_size"] != 0:
+        target_mask = cv2.morphologyEx(target_mask, cv2.MORPH_OPEN, opening_kernel)
     target_dist = cv2.distanceTransform(
         target_mask.astype("uint8"), cv2.DIST_L2, 3, cv2.CV_32F
     )
 
     # Generating the seeds
-    seed_mask = cv2.morphologyEx(
-        image_copy[..., frame.get_ch(params["seed_ch"])],
-        cv2.MORPH_OPEN,
-        opening_kernel,
-    )
+    if params["opening_size"] != 0:
+        seed_mask = cv2.morphologyEx(
+            image_copy[..., frame.get_ch(params["seed_ch"])],
+            cv2.MORPH_OPEN,
+            opening_kernel,
+        )
+    else:
+        seed_mask = image_copy[..., frame.get_ch(params["seed_ch"])]
     seed_dist = cv2.distanceTransform(
         seed_mask.astype("uint8"), cv2.DIST_L2, 3, cv2.CV_32F
     )
@@ -168,14 +174,9 @@ def process_frames(args):
         "verbose": args.verbose,
     }
 
-    # check if channel names and channel indices have same length
-    if len(args.channels) != len(args.starts):
-        logger.error("number of channels and number of starts do not match!")
-        sys.exit(1)
+    logger.info("Loading frames...")
 
-    logger.info("Loading frame images...")
-
-    # check if there are a selection of frames to process
+    # check if there is a selection of frames to process
     if args.selected_frames:
         frame_ids = args.selected_frames
     else:
@@ -193,7 +194,7 @@ def process_frames(args):
         if not include_edge and frame.is_edge():
             continue
         frames.append(frame)
-    logger.info("Finished loading frame images.")
+    logger.info("Finished loading frames.")
 
     logger.info("Processing the frames...")
     n_proc = n_threads if n_threads > 0 else mp.cpu_count()
@@ -309,7 +310,8 @@ def main():
         "-F",
         "--format",
         type=str,
-        default="Tile%06d.tif",
+        nargs="+",
+        default=["Tile%06d.tif"],
         help="image name format",
     )
 
@@ -465,6 +467,12 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # check if channel names and channel indices have same length
+    if len(args.channels) != len(args.starts) and len(args.channels) != len(args.format):
+        print("number of channels do not match with number of starts or name formats")
+        sys.exit(-1)
+
     process_frames(args)
 
 
