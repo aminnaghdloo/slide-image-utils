@@ -1,9 +1,9 @@
 from skimage import color
+from skimage import segmentation
 from slideutils.utils import utils
 import pandas as pd
 import numpy as np
 import cv2
-import math
 import h5py
 import os
 import sys
@@ -54,7 +54,7 @@ def create_montages(args):
                     masks = masks[np.newaxis, ...]
 
     # checking the consistency of input arguments with input data
-    if masks is None and mask_flag != 0:
+    if masks is None and mask_flag is not None:
         logger.error("input file does not contain 'masks'")
         sys.exit(-1)
 
@@ -82,13 +82,14 @@ def create_montages(args):
     df.reset_index(drop=True, inplace=True)
 
     # applying mask on images
-    if mask_flag == 1:
-        images = np.multiply(images, (masks != 0).astype(int))
+    if mask_flag == "crop":
+        images = np.multiply(images, masks)
 
     # cropping images to smaller size if required
     if width < images.shape[1]:
         gap = (images.shape[1] - width) // 2
         images = images[:, gap : (width + gap), gap : (width + gap), :]
+        masks = masks[:, gap : (width + gap), gap : (width + gap), :] if masks is not None else None
 
     # apply gains
     images = utils.apply_gain(images, args.gain)
@@ -102,6 +103,14 @@ def create_montages(args):
     montages = utils.channels2montage(
         images, b_index, g_index, r_index, order_index
     )
+
+    if mask_flag == "overlay":
+        for i in range(len(montages)):
+            ext_mask = np.tile(masks[i, :, :, 0], reps=1+len(order))
+            marked_image = segmentation.mark_boundaries(
+                montages[i], ext_mask, mode='inner', color=[0,1,1]
+            )
+            montages[i] = (marked_image * 255).astype('uint8')
 
     if args.separate:
         output_path = (
@@ -166,9 +175,9 @@ def main():
     parser.add_argument(
         "-m",
         "--mask_flag",
-        type=int,
-        default=0,
-        choices=[0, 1, 2],
+        type=str,
+        default=None,
+        choices=["crop", "overlay"],
         help="mask flag",
     )
 
