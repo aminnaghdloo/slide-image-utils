@@ -39,8 +39,16 @@ def get_logger(module_name, verbosity_level):
     return logger
 
 
+#def generate_tile_paths(path, frame_id, starts, name_format):
+#    paths = [f"{path}/{name_format}" % (frame_id + j - 1) for j in starts]
+#    return paths
+
+# updated version to images where channel name is inside image file name
 def generate_tile_paths(path, frame_id, starts, name_format):
-    paths = [f"{path}/{name_format}" % (frame_id + j - 1) for j in starts]
+    if len(name_format) == 1:
+        paths = [f"{path}/{name_format[0]}" % (frame_id + j - 1) for j in starts]
+    elif len(starts) == 1:
+        paths = [f"{path}/{j}" % (frame_id + starts[0] - 1) for j in name_format]
     return paths
 
 
@@ -224,8 +232,8 @@ def channels_to_bgr(image, blue_index, green_index, red_index):
     bgr = bgr.astype(image.dtype)
 
     # commented the following to debug montage generation for single events
-    if len(bgr) == 1:
-        bgr = bgr[0, ...]
+    # if len(bgr) == 1:
+    #     bgr = bgr[0, ...]
 
     return bgr
 
