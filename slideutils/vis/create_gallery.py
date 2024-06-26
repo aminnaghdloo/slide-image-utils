@@ -1,4 +1,4 @@
-from skimage import color
+from skimage import segmentation
 import pandas as pd
 import numpy as np
 import cv2
@@ -26,7 +26,7 @@ def create_gallery(images, n_x, n_y):
             (n_total - n_current, shape[1], shape[2], d), dtype=images.dtype
         )
         images = np.append(images, filler, axis=0)
-    gallery = np.zeros((pages, h, w, d), dtype="uint16")
+    gallery = np.zeros((pages, h, w, d), dtype=images.dtype)
     for k in range(pages):
         gallery[k, :, :, :] = np.vstack(
             [
@@ -80,7 +80,7 @@ def main_process(args):
             masks = file["masks"][:] if "masks" in file.keys() else None
 
     # checking the consistency of input arguments with input data
-    if masks is None and mask_flag != 0:
+    if masks is None and mask_flag is not None:
         logger.error("input file does not contain 'masks'")
         sys.exit(-1)
 
@@ -109,30 +109,40 @@ def main_process(args):
     masks = masks[list(df.index)] if masks is not None else None
     df.reset_index(drop=True, inplace=True)
 
+    # cropping images to smaller size if required
+    if width < images.shape[1]:
+        gap = (images.shape[1] - width) // 2
+        images = images[:, gap : (width + gap), gap : (width + gap), :]
+
+    # apply gains
+    images = utils.apply_gain(images, args.gain)
+
     # converting to BGR image for visualization
     logger.info("Creating the gallery...")
     red_index = [channels.index(channel) for channel in red]
     green_index = [channels.index(channel) for channel in green]
     blue_index = [channels.index(channel) for channel in blue]
     images = utils.channels_to_bgr(images, blue_index, green_index, red_index)
+    images = (images // 256).astype("uint8")
 
     # applying mask on images
-    if mask_flag == 1:
-        images = np.multiply(images, (masks != 0).astype(int))
-    elif mask_flag == 2:
-        images = color.label2rgb(
-            label=masks[..., 0], image=images, channel_axis=3
-        )
-        images = (images * 65535).astype("uint16")
+    if mask_flag == "crop":
+        images = np.multiply(images, masks.astype('uint8'))
+    elif mask_flag == "overlay":
+        for i in range(len(images)):
+            marked_image = segmentation.mark_boundaries(
+                images[i], masks[i, :, :, 0], mode='inner', color=[0,1,1]
+            )
+            images[i] = (marked_image * 255).astype('uint8')
 
     # cropping images to smaller size if required
     if width < images.shape[1]:
         gap = (images.shape[1] - width) // 2
         images = images[:, gap : (width + gap), gap : (width + gap), :]
+        masks = masks[:, gap : (width + gap), gap : (width + gap), :] if masks is not None else None
 
     # create gallery
     gallery = create_gallery(images=images, n_x=n_x, n_y=n_y)
-    gallery = (gallery // 256).astype("uint8")
 
     cv2.imwritemulti(output, gallery)
     logger.info("Finished creating the gallery!")
@@ -195,9 +205,9 @@ def main():
     parser.add_argument(
         "-m",
         "--mask_flag",
-        type=int,
-        default=0,
-        choices=[0, 1, 2],
+        type=str,
+        default=None,
+        choices=["crop", "overlay"],
         help="mask flag",
     )
 
@@ -226,6 +236,15 @@ def main():
         required=True,
         default=[],
         help="channel(s) to be shown in blue color",
+    )
+
+    parser.add_argument(
+        "-g",
+        "--gain",
+        nargs="+",
+        type=float,
+        default=[1, 1, 1, 1],
+        help="gains applied to each channel",
     )
 
     parser.add_argument(
