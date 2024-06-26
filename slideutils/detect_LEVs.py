@@ -134,12 +134,16 @@ def process_frames(args):
         "verbosity": verbosity,
     }
 
-    logger.info("Generating frame image paths...")
+    logger.info("Loading frames...")
+
+    # check if there is a selection of frames to process
+    if args.selected_frames:
+        frame_ids = args.selected_frames
+    else:
+        frame_ids = [i + offset + 1 for i in range(n_frames)]
+
     frames = []
-    for i in range(n_frames):
-        frame_id = i + offset + 1
-        if not include_edge and utils.is_edge(frame_id):
-            continue
+    for frame_id in frame_ids:
         paths = utils.generate_tile_paths(
             path=input,
             frame_id=frame_id,
@@ -147,8 +151,10 @@ def process_frames(args):
             name_format=name_format,
         )
         frame = Frame(frame_id=frame_id, channels=args.channels, paths=paths)
+        if not include_edge and frame.is_edge():
+            continue
         frames.append(frame)
-    logger.info("Finished generating frame image paths.")
+    logger.info("Finished loading frames.")
 
     logger.info("Processing the frames...")
     n_proc = n_threads if n_threads > 0 else mp.cpu_count()
@@ -337,6 +343,14 @@ def main():
         default=False,
         action="store_true",
         help="include frames that are on the edge of slide",
+    )
+
+    parser.add_argument(
+        "--selected_frames",
+        type=int,
+        nargs="*",
+        default=[],
+        help="list of selected frames to be processed",
     )
 
     parser.add_argument(
