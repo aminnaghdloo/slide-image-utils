@@ -39,6 +39,7 @@ def segment_frame(frame, params):
 
     # Preprocessing and segmenting channels separately
     target_mask = np.zeros(image_copy.shape[:2], dtype=image_copy.dtype)
+    seed_mask = np.zeros(image_copy.shape[:2], dtype=image_copy.dtype)
     for ch in params["mask_ch"]:
         i = frame.get_ch(ch)
 
@@ -62,6 +63,8 @@ def segment_frame(frame, params):
         )
         image_copy[..., i] = image_copy[..., i] > thresh_image
         target_mask = cv2.bitwise_or(target_mask, image_copy[..., i])
+        if ch in params["seed_ch"]:
+            seed_mask = cv2.bitwise_or(seed_mask, image_copy[..., i])
 
     # Postprocessing the masks
     target_mask = utils.fill_holes(target_mask.astype("uint8"))
@@ -74,12 +77,10 @@ def segment_frame(frame, params):
     # Generating the seeds
     if params["opening_size"] != 0:
         seed_mask = cv2.morphologyEx(
-            image_copy[..., frame.get_ch(params["seed_ch"])],
+            seed_mask,
             cv2.MORPH_OPEN,
             opening_kernel,
         )
-    else:
-        seed_mask = image_copy[..., frame.get_ch(params["seed_ch"])]
     seed_dist = cv2.distanceTransform(
         seed_mask.astype("uint8"), cv2.DIST_L2, 3, cv2.CV_32F
     )
@@ -378,8 +379,9 @@ def main():
     parser.add_argument(
         "--seed_channel",
         type=str,
-        default="DAPI",
-        help="channel name to use as seed",
+        nargs="+",
+        default=["DAPI"],
+        help="channel name(s) to use as seed",
     )
 
     parser.add_argument(
