@@ -4,4 +4,4 @@ build/
 slide-image-utils.egg-info/
 __pycache__
 */*.pyc
-
+tests/
