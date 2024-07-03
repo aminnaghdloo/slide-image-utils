@@ -94,7 +94,7 @@ def main():
         "--data",
         type=str,
         required=True,
-        help="path to tab-delimited events data file with <frame_id>\t<x>\t<y>",
+        help="path to tab-delimited event data file with <frame_id>\t<x>\t<y>",
     )
 
     parser.add_argument(

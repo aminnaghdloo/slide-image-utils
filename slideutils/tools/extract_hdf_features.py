@@ -1,4 +1,5 @@
 import pandas as pd
+import argparse
 import sys
 
 
@@ -11,16 +12,29 @@ def hdf2txt(hdf_file, txt_file):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python extract_hdf_features.py hdf_file txt_file")
-        sys.exit(0)
-    else:
-        hdf_file = sys.argv[1]
-        txt_file = sys.argv[2]
-        hdf2txt(hdf_file, txt_file)
-        print(
-            f"Successfully extracted features form {sys.argv[1]} to {sys.argv[2]}!"
-        )
+    parser = argparse.ArgumentParser(
+        description="Extract tabular features from hdf5 files",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+
+    parser.add_argument(
+        "-i", "--input", type=str, required=True,
+        help="path to input hdf5 file"
+    )
+
+    parser.add_argument(
+        "-o", "--output", type=str, required=True,
+        help="path to output tab-delimited file"
+    )
+
+    args = parser.parse_args()
+
+    hdf_file = sys.argv[1]
+    txt_file = sys.argv[2]
+    hdf2txt(args.input, args.output)
+    print(
+        f"Successfully extracted features from {args.input} to {args.output}!"
+    )
 
 
 if __name__ == "__main__":
