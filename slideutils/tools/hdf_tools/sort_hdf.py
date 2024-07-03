@@ -2,6 +2,7 @@ import sys
 import h5py
 import pandas as pd
 import numpy as np
+import argparse
 
 
 def paired_sort(df, images, masks, column, order_char):
@@ -17,34 +18,46 @@ def paired_sort(df, images, masks, column, order_char):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="sort HDF5 files",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "-i", "--input", type=str, required=True, help="Input HDF5 file"
+    )
+    parser.add_argument(
+        "-o", "--output", type=str, required=True, help="Output HDF5 file" 
+    )
+    parser.add_argument(
+        "-c", "--column", type=str, required=True, help="column to sort"
+    )
+    parser.add_argument(
+        "-o", "--order", type=str, required=True, choices=['A', 'D'],
+        help="sorting order: A -> ascending / D -> descending"
+    )
 
-    if len(sys.argv) != 5:
-        quit("python sort_hdf <input.hdf5> <output.hdf5> <column_name> <A/D>")
-
-    input_name = sys.argv[1]
-    output_name = sys.argv[2]
-    col_name = sys.argv[3]
-    order_char = sys.argv[4]
+    args = parser.parse_args()
 
     # Reading data from input file
-    df = pd.read_hdf(input_name, mode="r", key="features")
-    with h5py.File(input_name, mode="r") as file:
+    df = pd.read_hdf(args.input, mode="r", key="features")
+    with h5py.File(args.input, mode="r") as file:
         images = file["images"][:]
         masks = file["masks"][:] if "masks" in file.keys() else None
         channels = file["channels"][:] if "channels" in file.keys() else None
 
     # Sorting dataframe and images
-    df, images, masks = paired_sort(df, images, masks, col_name, order_char)
+    df, images, masks = paired_sort(df, images, masks, args.column, args.order)
 
     # Writing data to output file
-    with h5py.File(output_name, mode="w") as file:
-        file["images"] = images
-        if channels is not None:
-            file["channels"] = channels
+    with h5py.File(args.output, mode="w") as f:
+        f.create_dataset("images", data=images)
+        f.create_dataset("channels", data=channels)
         if masks is not None:
-            file["masks"] = masks
+            f.create_dataset("masks", data=masks)
 
-    df.to_hdf(output_name, mode="a", key="features")
+    df.reset_index(drop=True, inplace=True)
+    df.to_hdf(args.output, mode="a", key="features")
+    print("Done!")
 
 
 if __name__ == "__main__":

@@ -13,8 +13,7 @@ def filter_hdf(args):
     with h5py.File(input_file, "r") as f:
         images = f["images"][:]
         channels = f["channels"][:]
-        if args.mask_flag:
-            masks = f["masks"][:]
+        masks = f["masks"][:] if "masks" in f.keys() else None
 
     features = pd.read_hdf(input_file, mode="r", key="features")
 
@@ -40,15 +39,14 @@ def filter_hdf(args):
 
     features = features[sel["index"]]
     images = images[sel["index"]]
-    if args.mask_flag:
-        masks = masks[sel["index"]]
+    masks = masks[sel["index"]] if masks is not None else None
 
     # Write the output
     with h5py.File(output_file, "w") as f:
         f.create_dataset("images", data=images)
         f.create_dataset("channels", data=channels)
-        if args.mask_flag:
-           f.create_dataset("masks", data=masks)
+        if masks is not None:
+            f.create_dataset("masks", data=masks)
 
     features.reset_index(drop=True, inplace=True)
     features.to_hdf(output_file, key="features", mode="a")
@@ -57,19 +55,15 @@ def filter_hdf(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Filter HDF5 files")
+    parser = argparse.ArgumentParser(
+        description="Filter HDF5 files",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument(
         "-i", "--input", type=str, required=True, help="Input HDF5 files"
     )
     parser.add_argument(
         "-o", "--output", type=str, required=True, help="Output HDF5 file"
-    )
-    parser.add_argument(
-        "-m",
-        "--mask_flag",
-        action="store_true",
-        default=False,
-        help="include the masks as well",
     )
     parser.add_argument(
         "--filter",
