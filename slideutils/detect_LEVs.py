@@ -283,7 +283,7 @@ def main():
         "-F",
         "--format",
         type=str,
-        default="Tile%06d.tif",
+        default=["Tile%06d.tif"],
         help="image name format",
     )
 
