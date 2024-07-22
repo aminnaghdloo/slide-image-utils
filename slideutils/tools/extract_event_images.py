@@ -139,8 +139,9 @@ def main():
         "-F",
         "--format",
         type=str,
-        default="Tile%06d.tif",
-        help="image name format",
+        nargs='+',
+        default=["Tile%06d.tif"],
+        help="image name format(s)",
     )
 
     parser.add_argument(

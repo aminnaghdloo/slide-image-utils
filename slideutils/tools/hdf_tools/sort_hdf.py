@@ -32,7 +32,7 @@ def main():
         "-c", "--column", type=str, required=True, help="column to sort"
     )
     parser.add_argument(
-        "-o", "--order", type=str, required=True, choices=['A', 'D'],
+        "-O", "--order", type=str, required=True, choices=['A', 'D'],
         help="sorting order: A -> ascending / D -> descending"
     )
 

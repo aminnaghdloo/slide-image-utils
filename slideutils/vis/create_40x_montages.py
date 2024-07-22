@@ -19,7 +19,7 @@ def channels2montage(images, b_index, g_index, r_index, order_index):
     return montages
 
 
-def main(args):
+def process(args):
 
     # inputs
     input = args.input
@@ -99,8 +99,7 @@ def main(args):
     logger.info("Finished creating the montages!")
 
 
-if __name__ == "__main__":
-
+def main():
     parser = argparse.ArgumentParser(
         description="Create montages of events from 40x frame images.",
         formatter_class=argparse.RawTextHelpFormatter,
@@ -216,6 +215,10 @@ if __name__ == "__main__":
     logger.info(f"input data file:  {args.data}")
     logger.info(f"output file:	  {args.output}")
 
-    main(args)
+    process(args)
 
     logger.info("Program finished successfully!")
+
+
+if __name__ == "__main__":
+    main()
