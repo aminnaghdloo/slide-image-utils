@@ -6,7 +6,7 @@ nav:
   - Postprocessing Tools: postproc.md
   - Visualization Tools: vis.md
 theme:
-  name: material #readthedocs
+  name: material # readthedocs
   features:
     - navigation.sections
     - toc.integrate
