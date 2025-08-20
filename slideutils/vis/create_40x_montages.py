@@ -1,6 +1,6 @@
-from PIL import Image
 from slideutils.utils.frame import Frame
 from slideutils.utils import utils
+from PIL import Image
 import pandas as pd
 import numpy as np
 import cv2
@@ -57,9 +57,11 @@ def process(args):
         image = np.fliplr(np.flipud(image))
 
         h, w, _ = image.shape
+        dx = 0 if 'dx' not in df.columns else int(row.dx)
+        dy = 0 if 'dy' not in df.columns else int(row.dy)
         crop = image[
-            (h // 2 - width // 2) : (h // 2 + width // 2 + 1),
-            (w // 2 - width // 2) : (w // 2 + width // 2 + 1),
+            (h // 2 - width // 2 - dy) : (h // 2 + width // 2 + 1 - dy),
+            (w // 2 - width // 2 - dx) : (w // 2 + width // 2 + 1 - dx),
             :,
         ]
         images.append(crop)
@@ -76,6 +78,13 @@ def process(args):
     g_index = [channels.index(channel) for channel in green]
     b_index = [channels.index(channel) for channel in blue]
     order_index = [channels.index(channel) for channel in order]
+
+    if args.boundary:
+        images[:, :1, :, :] = np.iinfo(images.dtype).max
+        images[:, :, :1, :] = np.iinfo(images.dtype).max
+        images[:, -1:, :, :] = np.iinfo(images.dtype).max
+        images[:, :, -1:, :] = np.iinfo(images.dtype).max
+
     montages = channels2montage(images, b_index, g_index, r_index, order_index)
 
     montages = utils.convert_dtype(montages, "uint8")
@@ -89,7 +98,7 @@ def process(args):
         for i, row in df.iterrows():
             temp_path = (
                 f"{output_path}/{int(row.cell_id)}-{int(row.frame_id)}"
-                f"-{int(row.x)}-{int(row.y)}_40X.jpg"
+                f"-{int(row.x)}-{int(row.y)}_40X.png"
             )
             cv2.imwrite(temp_path, montages[i])
             logger.info(f"Created {temp_path}")
@@ -194,6 +203,15 @@ def main():
         help="""
 		save montages individually for each event as 
 		<cell_id>-<frame_id>-<x>-<y>_40x.jpg""",
+    )
+
+    parser.add_argument(
+        "-b",
+        "--boundary",
+        action="store_true",
+        default=False,
+        help="""
+		draw white boundary around each tile in montage""",
     )
 
     parser.add_argument(

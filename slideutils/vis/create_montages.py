@@ -100,6 +100,13 @@ def create_montages(args):
     g_index = [channels.index(channel) for channel in green]
     b_index = [channels.index(channel) for channel in blue]
     order_index = [channels.index(channel) for channel in order]
+
+    if args.boundary:
+        images[:, :1, :, :] = np.iinfo(images.dtype).max
+        images[:, :, :1, :] = np.iinfo(images.dtype).max
+        images[:, -1:, :, :] = np.iinfo(images.dtype).max
+        images[:, :, -1:, :] = np.iinfo(images.dtype).max
+
     montages = utils.channels2montage(
         images, b_index, g_index, r_index, order_index
     )
@@ -237,6 +244,14 @@ def main():
 
     parser.add_argument(
         "-v", "--verbose", action="count", default=0, help="verbosity level"
+    )
+
+    parser.add_argument(
+        "-b",
+        "--boundary",
+        action="store_true",
+        default=False,
+        help="""draw white boundary around each tile in montage""",
     )
 
     parser.add_argument(
