@@ -2,21 +2,21 @@ import pandas as pd
 import sys
 import os
 
-database_path_pref = "/mnt/N/Amin/reimaging_data_files/" # "/mnt/Y/DZ/"
-database_path_suff = "/file_based/data.xml"
+database_path_suff = "file_based/data.xml"
 
 if __name__ == "__main__":
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         sys.exit(
             f"Two arguments are required: "
-            f"python preprocess_for_reimaging.py <input file> <slide_id>"
+            f"python preprocess_for_reimaging.py <input file> <slide_id> <output path>"
         )
     else:
         input_path = sys.argv[1]
         slide_id = sys.argv[2]
-        slide_path = database_path_pref + slide_id
-        output_path = slide_path + database_path_suff
+        database_path_pref = sys.argv[3]
+        slide_path = f"{database_path_pref}/{slide_id}"
+        output_path = f"{slide_path}/{database_path_suff}"
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     if not os.path.isfile(input_path):

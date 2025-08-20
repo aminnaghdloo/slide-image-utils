@@ -2,7 +2,6 @@ import pandas as pd
 import sys
 import os
 
-#database_path_pref = "/mnt/Y/DZ/"
 input_path_suff = "/file_based/record_centers.txt"
 output_path_suff = "/file_based/reimaged_data.txt"
 

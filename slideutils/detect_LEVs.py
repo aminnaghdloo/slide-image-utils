@@ -113,7 +113,6 @@ def process_frames(args):
     extract_img = args.extract_images
     width = args.width
     mask_flag = args.mask_flag
-    sorts = args.sort
 
     logger = utils.get_logger(__name__, verbosity)
 
