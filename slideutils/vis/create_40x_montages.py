@@ -43,7 +43,7 @@ def process(args):
     index_to_drop = []
     for index, row in df.iterrows():
         paths = [
-            f"{input}/{int(row.cell_id)}-{int(row.frame_id)}-{int(row.x)}-{int(row.y)}-{c}.tif"
+            f"{input}/{row.cell_id}-{row.frame_id}-{int(row.x)}-{int(row.y)}-{c}.tif"
             for c in channels
         ]
         print(paths)
