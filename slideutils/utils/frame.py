@@ -259,7 +259,7 @@ class Frame:
                 return (out_image, None)
 
     def writeImage(self, path):
-        cv2.imwritemulti(self.image, path)
+        cv2.imwritemulti(path, self.image)
 
     def writeImageRGB(self, path):
         return None
