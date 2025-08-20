@@ -3,40 +3,7 @@ import argparse
 import pandas as pd
 import h5py
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Merge HDF5 files")
-    parser.add_argument(
-        "-i",
-        "--input",
-        type=str,
-        nargs="+",
-        required=True,
-        help="Input HDF5 files",
-    )
-    parser.add_argument(
-        "-o", "--output", type=str, help="Output HDF5 file", required=True
-    )
-    parser.add_argument(
-        "-m",
-        "--mask_flag",
-        action="store_true",
-        default=False,
-        help="merge the masks as well",
-    )
-    parser.add_argument(
-        "-a",
-        "--add_filename_column",
-        type=str,
-        default=None,
-        help="column name to which the code adds file names",
-    )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Verbose mode"
-    )
-
-    args = parser.parse_args()
-
+def merge_hdf(args):
     # Read in the data
     all_images = []
     all_features = []
@@ -82,6 +49,41 @@ def main():
 
     print("Done!")
 
+
+def main():
+    parser = argparse.ArgumentParser(description="Merge HDF5 files")
+    parser.add_argument(
+        "-i",
+        "--input",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Input HDF5 files",
+    )
+    parser.add_argument(
+        "-o", "--output", type=str, help="Output HDF5 file", required=True
+    )
+    parser.add_argument(
+        "-m",
+        "--mask_flag",
+        action="store_true",
+        default=False,
+        help="merge the masks as well",
+    )
+    parser.add_argument(
+        "-a",
+        "--add_filename_column",
+        type=str,
+        default=None,
+        help="column name to which the code adds file names",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Verbose mode"
+    )
+
+    args = parser.parse_args()
+
+    merge_hdf(args)
 
 if __name__ == "__main__":
     main()

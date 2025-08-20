@@ -17,27 +17,7 @@ def paired_sort(df, images, masks, column, order_char):
     return df, images, masks
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="sort HDF5 files",
-        formatter_class=argparse.RawTextHelpFormatter
-    )
-    parser.add_argument(
-        "-i", "--input", type=str, required=True, help="Input HDF5 file"
-    )
-    parser.add_argument(
-        "-o", "--output", type=str, required=True, help="Output HDF5 file" 
-    )
-    parser.add_argument(
-        "-c", "--column", type=str, required=True, help="column to sort"
-    )
-    parser.add_argument(
-        "-O", "--order", type=str, required=True, choices=['A', 'D'],
-        help="sorting order: A -> ascending / D -> descending"
-    )
-
-    args = parser.parse_args()
-
+def sort_hdf(args):
     # Reading data from input file
     df = pd.read_hdf(args.input, mode="r", key="features")
     with h5py.File(args.input, mode="r") as file:
@@ -59,6 +39,29 @@ def main():
     df.to_hdf(args.output, mode="a", key="features")
     print("Done!")
 
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="sort HDF5 files",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "-i", "--input", type=str, required=True, help="Input HDF5 file"
+    )
+    parser.add_argument(
+        "-o", "--output", type=str, required=True, help="Output HDF5 file" 
+    )
+    parser.add_argument(
+        "-c", "--column", type=str, required=True, help="column to sort"
+    )
+    parser.add_argument(
+        "-O", "--order", type=str, required=True, choices=['A', 'D'],
+        help="sorting order: A -> ascending / D -> descending"
+    )
+
+    args = parser.parse_args()
+
+    sort_hdf(args)
 
 if __name__ == "__main__":
     main()
